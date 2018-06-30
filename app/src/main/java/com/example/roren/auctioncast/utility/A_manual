@@ -1,0 +1,13 @@
+
+utility
+
+액티비티 전체에서 사용되는 유용한 클래스를 모아둔 패키지.
+
+
+    1. global_variable
+
+        액티비티 전체에서 사용되는 static variable을 선언해서, 어떤 클래스에서도 접근 가능하도록 한다.
+
+    2. http_DBQuery
+
+        서버 DB와의 통신을 위한 클래스. 쿼리문을 파라미터로 받아 asyncTask를 실행시켜 Query 결과를 반환한다.
