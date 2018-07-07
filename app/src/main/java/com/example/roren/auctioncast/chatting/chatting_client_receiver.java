@@ -22,6 +22,8 @@ public class chatting_client_receiver extends ChannelInboundHandlerAdapter{
         String message = null;
         message = (String)msg;
 
+        Log.e("리시브 테스트: ", message);
+
         Message m = new Message();
         m.what = 1;
         m.obj = message;

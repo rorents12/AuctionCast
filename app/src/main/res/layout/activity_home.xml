@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
+<android.support.constraint.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".activity_home">
+    android:layout_height="match_parent">
 
     <android.support.v4.widget.DrawerLayout
         android:layout_height="match_parent"
@@ -60,6 +58,69 @@
                 android:layout_gravity="center"
                 android:text="아이디"
                 android:textColor="#000"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:layout_marginLeft="30dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="옥션캐시 - "
+                    android:textColor="#000"/>
+
+                <TextView
+                    android:id="@+id/activity_broadcasting_list_textView_cash"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0 원"
+                    android:textColor="#000"/>
+
+                <Button
+                    android:id="@+id/activity_broadcasting_list_button_chargeCash"
+                    android:layout_width="50dp"
+                    android:layout_height="35dp"
+                    android:layout_marginLeft="10dp"
+                    android:text="충전"
+                    android:textSize="10dp"
+                    />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="30dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="옥션코인 - "
+                    android:textColor="#000"/>
+
+                <TextView
+                    android:id="@+id/activity_broadcasting_list_textView_coin"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0 개"
+                    android:textColor="#000"/>
+
+                <Button
+                    android:id="@+id/activity_broadcasting_list_button_chargeCoin"
+                    android:layout_width="50dp"
+                    android:layout_height="35dp"
+                    android:layout_marginLeft="10dp"
+                    android:text="충전"
+                    android:textSize="10dp"
+                    />
+
+            </LinearLayout>
 
             <Button
                 android:id="@+id/activity_broadcasting_list_button_start_broadcast"

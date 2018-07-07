@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="50dp"
+    android:orientation="horizontal"
+    android:background="#AA000000"
+    android:id="@+id/layout_auction"
+    android:visibility="gone">
+
+    <LinearLayout
+        android:layout_width="140dp"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:layout_gravity="center_vertical"
+        android:layout_marginLeft="10dp">
+
+        <TextView
+            android:id="@+id/auction_textView_priceNow"
+            android:layout_width="wrap_content"
+            android:layout_height="25dp"
+            android:text="입찰가 - 30000 원"
+            android:textColor="#eee2"
+            />
+
+        <TextView
+            android:id="@+id/auction_textView_bidder"
+            android:layout_width="wrap_content"
+            android:layout_height="25dp"
+            android:text="입찰자 - nova"
+            android:textColor="#eee2"/>
+
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/auction_button_bid"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="입찰"
+        android:layout_gravity="center_vertical"
+        android:layout_marginLeft="10dp"
+        />
+
+    <TextView
+        android:id="@+id/auction_textView_priceBid"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="5000"
+        android:textColor="#eee2"
+        android:layout_gravity="center_vertical"
+        android:layout_marginLeft="10dp"
+        />
+
+    <ImageButton
+        android:id="@+id/auction_button_bid_up"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@android:drawable/stat_sys_upload"
+        android:layout_gravity="center_vertical"
+        />
+
+    <ImageButton
+        android:id="@+id/auction_button_bid_down"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@android:drawable/stat_sys_download"
+        android:layout_gravity="center_vertical"
+        />
+
+
+
+</LinearLayout>

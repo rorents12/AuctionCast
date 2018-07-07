@@ -11,6 +11,10 @@ import android.support.v7.widget.RecyclerView;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import com.example.roren.auctioncast.chatting.chatting_client_receiver;
 import com.example.roren.auctioncast.chatting.chatting_client_initializer;
@@ -41,6 +45,8 @@ import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import com.example.roren.auctioncast.R;
+
+import org.json.JSONObject;
 
 /**
  * 시청자가 방송을 볼 수 있는 액티비티.
@@ -73,10 +79,6 @@ public class activity_playVideo extends AppCompatActivity{
     // 채팅 메시지를 parsing, compressing, sending 하는 클래스.
     private chatting_utility chattingUtility;
 
-    // netty 채팅 서버에 연결하기 위한 port 번호와 host ip
-    static final String HOST = System.getProperty("host", "192.168.0.90");
-    static final int PORT = Integer.parseInt(System.getProperty("port", "5001"));
-
     // netty 채팅 서버와 연결했을 때 해당 서버와 연결을 지속하게 해주고, 메시지를 주고 받을 수 있게 해주는 클래스.
     private Channel channel;
 
@@ -84,20 +86,22 @@ public class activity_playVideo extends AppCompatActivity{
     private Handler handler;
     private chatting_client_receiver receiver;
 
-    // 서버로부터 채팅메시지가 도착하고, receiver에서 handler로 메시지가 전달된 후 recyclerView를 업데이트 하여 새로운 채팅을 보여주는 method.
-    public void receive_chatting(String string) throws Exception{
+    // netty 채팅 서버에 접속할 때, 사용자가 속한 방에 대한 정보를 나타내는 roomCode
+    private String roomCode;
 
-        recyclerView_item_chatting item = new recyclerView_item_chatting();
+    /**
+     * 경매 시스템을 위한 변수 선언
+     */
 
-        item.setId(chattingUtility.getMessageId(string));
-        item.setText(chattingUtility.getMessageText(string));
+    private Button btnBid;
+    private ImageButton btnBidUp;
+    private ImageButton btnBidDown;
+    private TextView textView_priceNow;
+    private TextView textView_bidder;
+    private TextView textView_priceBid;
+    private LinearLayout layout_auction;
 
-        adapter_broadcasting_chatting.addItem(item);
-        adapter_broadcasting_chatting.notifyDataSetChanged();
-        recyclerView_chatting.scrollToPosition(adapter_broadcasting_chatting.getItemCount() - 1);
-    }
-
-
+    private int priceNow;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -107,6 +111,9 @@ public class activity_playVideo extends AppCompatActivity{
         /**
          * onCreate 내의 채팅부분
          */
+        // 채팅 방을 구분하기 위한 roomCode 선언
+        roomCode = getIntent().getStringExtra("streamer_id");
+
         // 채팅 메시지 업데이트를 위한 handler 선언
         handler = new Handler(){
             @Override
@@ -140,10 +147,15 @@ public class activity_playVideo extends AppCompatActivity{
                     .channel(NioSocketChannel.class)
                     .handler(new chatting_client_initializer(sslCtx, receiver));
 
-            channel = bootstrap.connect(HOST, PORT).sync().channel();
+            channel = bootstrap.connect(utility_global_variable.HOST, utility_global_variable.PORT).sync().channel();
 
             //시청자 최초 연결 시 방 입장을 위해 서버에게 메시지를 보낸다
-            chattingUtility.sendMessage(utility_global_variable.CODE_CHAT_ENTRANCE, channel, activity_login.user_id, "방 입장", getIntent().getStringExtra("streamer_id"));
+            chattingUtility.sendMessage(
+                    utility_global_variable.CODE_CHAT_ENTRANCE,
+                    channel,
+                    activity_login.user_id,
+                    "방 입장", roomCode
+            );
 
         }catch (Exception e){
             e.printStackTrace();
@@ -161,11 +173,22 @@ public class activity_playVideo extends AppCompatActivity{
                     // 전송할 텍스트가 비어있지 않을 때만 메시지를 전송
                     if(!editText_chat.getText().toString().equals("")) {
                         // 자신의 화면에 채팅 업데이트
-                        String m = chattingUtility.getJSONObjectToString(utility_global_variable.CODE_CHAT_MESSAGE_GENERAL, activity_login.user_id, editText_chat.getText().toString(), getIntent().getStringExtra("streamer_id"));
+                        String m = chattingUtility.getJSONObjectToString(
+                                utility_global_variable.CODE_CHAT_MESSAGE_GENERAL,
+                                activity_login.user_id,
+                                editText_chat.getText().toString(),
+                                roomCode
+                        );
                         receive_chatting(m);
 
                         // 서버에 채팅 메시지 전송
-                        chattingUtility.sendMessage(utility_global_variable.CODE_CHAT_MESSAGE_GENERAL, channel,activity_login.user_id, editText_chat.getText().toString(), getIntent().getStringExtra("streamer_id"));
+                        chattingUtility.sendMessage(
+                                utility_global_variable.CODE_CHAT_MESSAGE_GENERAL,
+                                channel,
+                                activity_login.user_id,
+                                editText_chat.getText().toString(),
+                                roomCode
+                        );
 
                         editText_chat.setText("");
                     }
@@ -182,6 +205,65 @@ public class activity_playVideo extends AppCompatActivity{
         adapter_broadcasting_chatting = new recyclerView_adapter_chatting(this);
 
         recyclerView_chatting.setAdapter(adapter_broadcasting_chatting);
+
+        /**
+         *  onCreate 내의 경매 시스템 부분
+         */
+
+        textView_priceNow = findViewById(R.id.auction_textView_priceNow);
+        textView_bidder = findViewById(R.id.auction_textView_bidder);
+        textView_priceBid = findViewById(R.id.auction_textView_priceBid);
+
+        layout_auction = findViewById(R.id.layout_auction);
+
+        btnBid = findViewById(R.id.auction_button_bid);
+        btnBidUp = findViewById(R.id.auction_button_bid_up);
+        btnBidDown = findViewById(R.id.auction_button_bid_down);
+
+        btnBid.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                int priceBid = Integer.parseInt(textView_priceBid.getText().toString());
+
+                if(priceBid > priceNow){
+                    try{
+                        chattingUtility.sendMessage(
+                                utility_global_variable.CODE_CHAT_PRICE_RAISE,
+                                channel,
+                                activity_login.user_id,
+                                String.valueOf(priceBid),
+                                roomCode
+                        );
+
+                        System.out.println("확인했습니다.");
+                    }catch (Exception e){
+                        e.printStackTrace();
+                    }
+                }else{
+                    Toast.makeText(
+                            activity_playVideo.this,
+                            "현재 입찰가인 " + priceNow + "원 보다 낮은 금액으로는 입찰할 수 없습니다.",
+                            Toast.LENGTH_SHORT
+                    ).show();
+                }
+            }
+        });
+
+        btnBidUp.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                int priceBid = Integer.parseInt(textView_priceBid.getText().toString());
+                textView_priceBid.setText(String.valueOf(priceBid + 1000));
+            }
+        });
+
+        btnBidDown.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                int priceBid = Integer.parseInt(textView_priceBid.getText().toString());
+                textView_priceBid.setText(String.valueOf(priceBid - 1000));
+            }
+        });
 
         /**
          *  onCreate 내의 RTMP 플레이어 부분
@@ -247,4 +329,65 @@ public class activity_playVideo extends AppCompatActivity{
 
     }
 
+    /**
+     * 서버로부터 채팅메시지가 도착하고, receiver에서 handler로 메시지가 전달된 후 메시지를 처리하는 method.
+     */
+    public void receive_chatting(String string) throws Exception{
+        int messageType = chattingUtility.getMessageType(string);
+
+        switch (messageType){
+
+            case utility_global_variable.CODE_CHAT_MESSAGE_GENERAL:
+                //채팅 메시지가 왔을 때
+                recyclerView_item_chatting item = new recyclerView_item_chatting();
+
+                item.setId(chattingUtility.getMessageId(string));
+                item.setText(chattingUtility.getMessageText(string));
+
+                adapter_broadcasting_chatting.addItem(item);
+                adapter_broadcasting_chatting.notifyDataSetChanged();
+
+                recyclerView_chatting.scrollToPosition(adapter_broadcasting_chatting.getItemCount() - 1);
+                break;
+
+            case utility_global_variable.CODE_CHAT_START_AUCTION:
+                //경매 시작 신호가 왔을 때
+                priceNow = Integer.parseInt(chattingUtility.getMessageText(string));
+
+                layout_auction.setVisibility(View.VISIBLE);
+
+                Toast.makeText(this, "경매가 시작되었습니다. 경매 시작가는 " + priceNow + "원 입니다.", Toast.LENGTH_LONG).show();
+
+                textView_priceNow.setText("경매 시작가 - " + priceNow + "원");
+                textView_bidder.setText("입찰자 - ");
+                textView_priceBid.setText(String.valueOf(priceNow + 1000));
+
+                System.out.println("시작가는 " + priceNow);
+
+                break;
+
+            case utility_global_variable.CODE_CHAT_STOP_AUCTION:
+                // 경매 종료 신호가 왔을 때
+                JSONObject json = chattingUtility.getMessageAuctionInfo(string);
+
+                textView_priceNow.setText("낙찰가 - " + json.getString("price") + "원");
+                textView_bidder.setText("낙찰자 - " + json.getString("id"));
+
+                btnBid.setVisibility(View.GONE);
+                btnBidUp.setVisibility(View.GONE);
+                btnBidDown.setVisibility(View.GONE);
+
+                textView_priceBid.setText("경매 종료");
+                break;
+
+            case utility_global_variable.CODE_CHAT_PRICE_RAISE:
+                // 입찰가 갱신 신호가 왔을 때
+                priceNow = Integer.parseInt(chattingUtility.getMessageText(string));
+
+                textView_priceNow.setText("입찰가 - " + String.valueOf(priceNow) + "원");
+                textView_bidder.setText("입찰자 - " + chattingUtility.getMessageId(string));
+
+                break;
+        }
+    }
 }

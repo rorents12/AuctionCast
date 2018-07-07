@@ -24,6 +24,9 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.roren.auctioncast.chatting.chatting_client_receiver;
@@ -56,7 +59,15 @@ import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import com.example.roren.auctioncast.R;
 
+import org.json.JSONObject;
+
+import static com.example.roren.auctioncast.utility.utility_global_variable.HOST;
+
 public class activity_publishVideo extends AppCompatActivity implements RtmpHandler.RtmpListener, SrsRecordHandler.SrsRecordListener, SrsEncodeHandler.SrsEncodeListener{
+
+    /**
+     * RTMP 송출을 위한 변수
+     */
     private static final String TAG = "Yasea";
 
     private int REQUEST_CAMERA;
@@ -65,7 +76,6 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
     private Button btnSwitchCamera;
     private Button btnRecord;
     private Button btnSwitchEncoder;
-    private Button btnSend;
 
     private EditText editText_chat;
 
@@ -74,39 +84,35 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
 
     private SrsPublisher mPublisher;
 
-    ////////////////////////////////////////////////////////////
+    /**
+     * 채팅을 위한 변수
+     */
     private RecyclerView recyclerView_chatting;
     private recyclerView_adapter_chatting adapter_broadcasting_chatting;
     private ArrayList<recyclerView_item_chatting> items;
 
-    private chatting_utility chattingUtility;
+    private Button btnSend;
 
-    static final String HOST = System.getProperty("host", "192.168.0.90");
-    static final int PORT = Integer.parseInt(System.getProperty("port", "5001"));
+    private chatting_utility chattingUtility;
 
     private Channel channel;
 
-//    private receiver_publisher handler = new receiver_publisher();
     private Handler handler;
     private chatting_client_receiver receiver;
 
-    public void receive_chatting(String string) throws Exception{
+    /**
+     * 경매 시스템을 위한 변수
+     */
+    private Button btnStartAuction;
+    private Button btnBid;
+    private ImageButton btnBidUp;
+    private ImageButton btnBidDown;
+    private TextView textView_priceNow;
+    private TextView textView_bidder;
+    private TextView textView_priceBid;
+    private LinearLayout layout_auction;
 
-        recyclerView_item_chatting item = new recyclerView_item_chatting();
-
-        item.setId(chattingUtility.getMessageId(string));
-        item.setText(chattingUtility.getMessageText(string));
-
-        adapter_broadcasting_chatting.addItem(item);
-        adapter_broadcasting_chatting.notifyDataSetChanged();
-
-//        recyclerView_chatting.setAdapter(adapter_broadcasting_chatting);
-        recyclerView_chatting.scrollToPosition(adapter_broadcasting_chatting.getItemCount() - 1);
-
-        Log.e("채팅 개수", String.valueOf(adapter_broadcasting_chatting.getItemCount()));
-    }
-
-    ///////////////////////////////////////////////////////////
+    private int priceNow;
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -129,6 +135,84 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
 
         /////////////////////////////////////////////////////////////////////////////////////
 
+        /**
+         * 경매 시스템을 위한 세팅
+         */
+        textView_priceNow = findViewById(R.id.auction_textView_priceNow);
+        textView_bidder = findViewById(R.id.auction_textView_bidder);
+        textView_priceBid = findViewById(R.id.auction_textView_priceBid);
+
+        layout_auction = findViewById(R.id.layout_auction);
+
+        btnStartAuction = findViewById(R.id.activity_broadcasting_button_startAuction);
+        btnStartAuction.setVisibility(View.GONE);
+        btnBid = findViewById(R.id.auction_button_bid);
+        btnBidUp = findViewById(R.id.auction_button_bid_up);
+        btnBidDown = findViewById(R.id.auction_button_bid_down);
+
+        btnStartAuction.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                switch (btnStartAuction.getText().toString()){
+                    case "경매 시작":
+                        AlertDialog.Builder dialog = new AlertDialog.Builder(activity_publishVideo.this);
+                        final EditText et = new EditText(activity_publishVideo.this);
+                        dialog  .setTitle("경매 시작가를 입력하세요.")
+                                .setView(et)
+                                .setPositiveButton("확인", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialogInterface, int i) {
+                                        try{
+                                            chattingUtility.sendMessage(
+                                                    utility_global_variable.CODE_CHAT_START_AUCTION,
+                                                    channel,
+                                                    activity_login.user_id,
+                                                    et.getText().toString(),
+                                                    activity_login.user_id
+                                            );
+                                            btnStartAuction.setText("경매 종료");
+                                        }catch (Exception e){
+                                            e.printStackTrace();
+                                        }
+                                    }
+                                })
+                                .setNeutralButton("취소", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialogInterface, int i) {
+                                        dialogInterface.dismiss();
+                                    }
+                                });
+
+                        dialog.create();
+                        dialog.show();
+                        break;
+                    case "경매 종료":
+                        try{
+                            chattingUtility.sendMessage(
+                                    utility_global_variable.CODE_CHAT_STOP_AUCTION,
+                                    channel,
+                                    activity_login.user_id,
+                                    "경매 종료", activity_login.user_id
+                            );
+                            btnStartAuction.setVisibility(View.GONE);
+                        }catch (Exception e){
+                            e.printStackTrace();
+                        }
+                        break;
+                }
+
+                try{
+
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        /**
+         * 채팅을 위한 세팅
+         */
+
         handler = new Handler(){
             @Override
             public void handleMessage(Message msg) {
@@ -146,23 +230,6 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
         receiver = new chatting_client_receiver(handler);
 
         chattingUtility = new chatting_utility();
-//        parser = new chatting_messageParser();
-//        compressor = new chatting_messageCompressor();
-
-//        handler = new Handler(){
-//            @Override
-//            public void handleMessage(Message msg) {
-//                switch (msg.what){
-//                    case 1:
-//                        try{
-//                            Log.e("핸들러 테스트", msg.obj.toString());
-//                            receive_chatting(msg.obj.toString());
-//                        }catch (Exception e){
-//                            e.printStackTrace();
-//                        }
-//                }
-//            }
-//        };
 
         editText_chat = findViewById(R.id.activity_broadcasting_editText_chatText);
 
@@ -175,11 +242,20 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
                     // 전송할 텍스트가 비어있지 않을 때만 메시지를 전송
                     if(!editText_chat.getText().toString().equals("")) {
                         // 자신의 화면에 채팅 업데이트
-                        String m = chattingUtility.getJSONObjectToString(utility_global_variable.CODE_CHAT_MESSAGE_GENERAL, activity_login.user_id, editText_chat.getText().toString(), activity_login.user_id);
+                        String m = chattingUtility.getJSONObjectToString(
+                                utility_global_variable.CODE_CHAT_MESSAGE_GENERAL,
+                                activity_login.user_id,
+                                editText_chat.getText().toString(),
+                                activity_login.user_id);
                         receive_chatting(m);
 
                         // 서버에 채팅 메시지 전송
-                        chattingUtility.sendMessage(utility_global_variable.CODE_CHAT_MESSAGE_GENERAL, channel,activity_login.user_id, editText_chat.getText().toString(), activity_login.user_id);
+                        chattingUtility.sendMessage(
+                                utility_global_variable.CODE_CHAT_MESSAGE_GENERAL,
+                                channel,
+                                activity_login.user_id,
+                                editText_chat.getText().toString(),
+                                activity_login.user_id);
 
                         editText_chat.setText("");
 
@@ -197,8 +273,10 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
         adapter_broadcasting_chatting = new recyclerView_adapter_chatting(this);
 
         recyclerView_chatting.setAdapter(adapter_broadcasting_chatting);
-        //////////////////////////////////////////////////////////////////////////////////////
 
+        /**
+         * RTMP 송출을 위한 세팅
+         */
         int permissionCheck = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO);
 
         if(permissionCheck == PackageManager.PERMISSION_DENIED){
@@ -208,12 +286,6 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
 
         }else{
             Log.e("퍼미션퍼미션!", "퍼미션 허용 돼있음");
-
-//            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-//            setContentView(R.layout.activity_publishvideo);
-
-            // response screen rotation event
-//            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR);
 
             rtmpUrl  = "rtmp://52.41.99.92/mytv/" + getIntent().getStringExtra("streamer_id");
 
@@ -272,7 +344,7 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
                                                    .channel(NioSocketChannel.class)
                                                    .handler(new chatting_client_initializer(sslCtx, receiver));
 
-                                           channel = bootstrap.connect(HOST, PORT).sync().channel();
+                                           channel = bootstrap.connect(utility_global_variable.HOST, utility_global_variable.PORT).sync().channel();
 
                                            //방송자 최초 연결 시 방만들기를 위해 서버에게 메시지를 보낸다
                                            chattingUtility.sendMessage(utility_global_variable.CODE_CHAT_MAKEROOM, channel, activity_login.user_id, "방 만들기", activity_login.user_id);
@@ -293,6 +365,9 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
                                            Toast.makeText(getApplicationContext(), "Use soft encoder", Toast.LENGTH_SHORT).show();
                                        }
                                        btnPublish.setText("stop");
+
+                                       // 방송 시작 시 경매시작 버튼이 보이게 됨
+                                       btnStartAuction.setVisibility(View.VISIBLE);
 
                                        //http 통신을 통해 방송정보 업로드
 
@@ -319,6 +394,7 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
                         btnPublish.setText("publish");
                         btnRecord.setText("record");
                         btnSwitchEncoder.setEnabled(true);
+                        btnStartAuction.setVisibility(View.GONE);
 
                         try{
                             chattingUtility.sendMessage(utility_global_variable.CODE_CHAT_EXIT, channel, activity_login.user_id, "방 나가기", activity_login.user_id);
@@ -644,35 +720,61 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
         handleException(e);
     }
 
-//    public void sendMessage(String code) throws Exception{
-//
-//        switch(code){
-//            case "makeRoom":
-//                String m1 = compressor.getJSONObjectToString(utility_global_variable.CODE_CHAT_MAKEROOM, activity_login.user_id, "방만들기");
-//                channel.writeAndFlush(m1);
-//                break;
-//            case "exitRoom":
-//                String m2 = compressor.getJSONObjectToString(utility_global_variable.CODE_CHAT_EXIT, activity_login.user_id, "방나가기", activity_login.user_id);
-//                channel.writeAndFlush(m2);
-//                break;
-//            case "chatting":
-//                String m3 = compressor.getJSONObjectToString(utility_global_variable.CODE_CHAT_MESSAGE_GENERAL, activity_login.user_id, editText_chat.getText().toString(), activity_login.user_id);
-//                editText_chat.setText("");
-//                receive_chatting(m3);
-//                channel.writeAndFlush(m3);
-//                break;
-//        }
-//
-//    }
+    public void receive_chatting(String string) throws Exception{
 
-//    public class receiver_publisher extends chatting_client_receiver {
-//        @Override
-//        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-//            try{
-//                receive_chatting(msg.toString());
-//            }catch (Exception e){
-//                e.printStackTrace();
-//            }
-//        }
-//    }
+        int messageType = chattingUtility.getMessageType(string);
+
+        switch (messageType){
+
+            case utility_global_variable.CODE_CHAT_MESSAGE_GENERAL:
+                //채팅 메시지가 왔을 때
+                recyclerView_item_chatting item = new recyclerView_item_chatting();
+
+                item.setId(chattingUtility.getMessageId(string));
+                item.setText(chattingUtility.getMessageText(string));
+
+                adapter_broadcasting_chatting.addItem(item);
+                adapter_broadcasting_chatting.notifyDataSetChanged();
+
+                recyclerView_chatting.scrollToPosition(adapter_broadcasting_chatting.getItemCount() - 1);
+                break;
+
+            case utility_global_variable.CODE_CHAT_START_AUCTION:
+                //경매 시작 신호가 왔을 때
+                priceNow = Integer.parseInt(chattingUtility.getMessageText(string));
+
+                layout_auction.setVisibility(View.VISIBLE);
+
+                Toast.makeText(this, "경매가 시작되었습니다. 경매 시작가는 " + priceNow + "원 입니다.", Toast.LENGTH_LONG).show();
+
+                textView_priceNow.setText("경매 시작가 - " + priceNow + "원");
+                textView_bidder.setText("입찰자 - ");
+
+                btnBid.setVisibility(View.GONE);
+                btnBidUp.setVisibility(View.GONE);
+                btnBidDown.setVisibility(View.GONE);
+                textView_priceBid.setText("경매 중...");
+                break;
+
+            case utility_global_variable.CODE_CHAT_STOP_AUCTION:
+                // 경매 종료 신호가 왔을 때
+                JSONObject json = chattingUtility.getMessageAuctionInfo(string);
+
+                textView_priceNow.setText("낙찰가 - " + json.getString("price") + "원");
+                textView_bidder.setText("낙찰자 - " + json.getString("id"));
+
+                textView_priceBid.setText("경매 종료");
+                break;
+
+            case utility_global_variable.CODE_CHAT_PRICE_RAISE:
+                // 입찰가 갱신 신호가 왔을 때
+                priceNow = Integer.parseInt(chattingUtility.getMessageText(string));
+
+                textView_priceNow.setText("입찰가 - " + String.valueOf(priceNow) + "원");
+                textView_bidder.setText("입찰자 - " + chattingUtility.getMessageId(string));
+                break;
+        }
+
+    }
+
 }

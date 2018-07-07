@@ -60,6 +60,12 @@ public class chatting_utility {
         return message.getString("text");
     }
 
+    public JSONObject getMessageAuctionInfo(String msg) throws Exception{
+        this.message = new JSONObject(msg);
+
+        return message.getJSONObject("auctionInfo");
+    }
+
     /**
      * sendMessage 부분
      */
@@ -67,7 +73,7 @@ public class chatting_utility {
     public void sendMessage(int code, Channel channel, String id, String text, String roomCode) throws Exception{
 
         String m = this.getJSONObjectToString(code, id, text, roomCode);
-        channel.writeAndFlush(m);
+        channel.writeAndFlush(m + "\n");
 
     }
 
