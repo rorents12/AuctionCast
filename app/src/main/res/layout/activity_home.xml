@@ -101,7 +101,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="옥션코인 - "
+                    android:text="옥션코인"
                     android:textColor="#000"/>
 
                 <TextView
@@ -116,7 +116,7 @@
                     android:layout_width="50dp"
                     android:layout_height="35dp"
                     android:layout_marginLeft="10dp"
-                    android:text="충전"
+                    android:text="지갑"
                     android:textSize="10dp"
                     />
 
@@ -128,6 +128,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="방송하기"
+                android:background="#eeed"/>
+
+            <Button
+                android:id="@+id/activity_broadcasting_list_button_contract_information"
+                android:layout_marginTop="5dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="거래정보"
                 android:background="#eeed"/>
 
 

@@ -19,4 +19,17 @@ public class utility_global_variable {
     public static final String HOST = System.getProperty("host", "52.41.99.92");
     public static final int PORT = Integer.parseInt(System.getProperty("port", "5001"));
 
+    /**
+     * Ethereum과 통신 시, 어떠한 메소드를 이용할 것인지 구분하기 위해 설정한 변수들
+     */
+    public static final int CODE_ETHER_GET_BALANCE = 2000;
+    public static final int CODE_ETHER_SEND_TOKEN = 2001;
+    public static final int CODE_ETHER_DEPLOY_TOKEN = 2010;
+
+    /**
+     * Ethereum Token 주소와 개인 wallet 주소
+     */
+    public static final String AUCTION_COIN_ADDRESS = "0x0970128d2A78906DdCEEA803290C90e9B4590F9b";
+    public static String WALLET_ADDRESS;
+    public static String WALLET_FILE_ADDRESS;
 }

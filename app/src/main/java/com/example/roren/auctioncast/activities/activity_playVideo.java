@@ -1,14 +1,19 @@
 package com.example.roren.auctioncast.activities;
 
+import android.content.DialogInterface;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.support.annotation.Nullable;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
+import android.view.animation.TranslateAnimation;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -88,6 +93,7 @@ public class activity_playVideo extends AppCompatActivity{
 
     // netty 채팅 서버에 접속할 때, 사용자가 속한 방에 대한 정보를 나타내는 roomCode
     private String roomCode;
+    private String title;
 
     /**
      * 경매 시스템을 위한 변수 선언
@@ -113,6 +119,7 @@ public class activity_playVideo extends AppCompatActivity{
          */
         // 채팅 방을 구분하기 위한 roomCode 선언
         roomCode = getIntent().getStringExtra("streamer_id");
+        title = getIntent().getStringExtra("title");
 
         // 채팅 메시지 업데이트를 위한 handler 선언
         handler = new Handler(){
@@ -356,6 +363,12 @@ public class activity_playVideo extends AppCompatActivity{
 
                 layout_auction.setVisibility(View.VISIBLE);
 
+                // 경매 시스템 UI 등장 애니메이션
+                Animation alphaUI = new AlphaAnimation(0, 1);
+                alphaUI.setDuration(500);
+
+                layout_auction.startAnimation(alphaUI);
+
                 Toast.makeText(this, "경매가 시작되었습니다. 경매 시작가는 " + priceNow + "원 입니다.", Toast.LENGTH_LONG).show();
 
                 textView_priceNow.setText("경매 시작가 - " + priceNow + "원");
@@ -370,6 +383,14 @@ public class activity_playVideo extends AppCompatActivity{
                 // 경매 종료 신호가 왔을 때
                 JSONObject json = chattingUtility.getMessageAuctionInfo(string);
 
+                // 경매 종료 시 텍스트 변경 애니메이션
+                Animation alphaPriceBid = new AlphaAnimation(0, 1);
+                alphaPriceBid.setDuration(500);
+                Animation alphaVanish = new AlphaAnimation(1, 0);
+                alphaVanish.setDuration(500);
+
+                textView_priceBid.startAnimation(alphaPriceBid);
+
                 textView_priceNow.setText("낙찰가 - " + json.getString("price") + "원");
                 textView_bidder.setText("낙찰자 - " + json.getString("id"));
 
@@ -378,6 +399,30 @@ public class activity_playVideo extends AppCompatActivity{
                 btnBidDown.setVisibility(View.GONE);
 
                 textView_priceBid.setText("경매 종료");
+
+                // 경매 종료 시 낙찰자를 제외한 사용자들은 자동으로 퇴장
+                if(!json.getString("id").equals(activity_login.user_id)) {
+                    AlertDialog.Builder dialog = new AlertDialog.Builder(activity_playVideo.this);
+                    final EditText et = new EditText(activity_playVideo.this);
+                    dialog.setTitle("자동 퇴장 알림")
+                            .setMessage("경매가 종료되어 낙찰자를 제외한 시청자들은 자동으로 퇴장합니다.")
+                            .setPositiveButton("확인", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialogInterface, int i) {
+                                    finish();
+                                }
+                            });
+
+                    dialog.create();
+                    dialog.show();
+                }else{
+                    // 경매 종료 시 낙찰자는 서버 DB에 거래 정보를 업로드한다.
+                    new utility_http_DBQuery().execute(
+                            "insert into table_contract_information (seller, buyer, price, title) values('"
+                                    + roomCode + "','" + activity_login.user_id + "'," + json.getString("price")
+                                    + ",'" + title + "');").get();
+                }
+
                 break;
 
             case utility_global_variable.CODE_CHAT_PRICE_RAISE:
@@ -387,7 +432,108 @@ public class activity_playVideo extends AppCompatActivity{
                 textView_priceNow.setText("입찰가 - " + String.valueOf(priceNow) + "원");
                 textView_bidder.setText("입찰자 - " + chattingUtility.getMessageId(string));
 
+                // 입찰가 갱신 시 입찰자, 입찰가 항목 변경 애니메이션
+                Animation translateFromRight = new TranslateAnimation(1000, 0, 0, 0);
+                Animation translateFromLeft = new TranslateAnimation(-1000, 0, 0, 0);
+
+                translateFromRight.setDuration(250);
+                translateFromLeft.setDuration(250);
+
+                textView_priceNow.startAnimation(translateFromRight);
+                textView_bidder.startAnimation(translateFromLeft);
+
                 break;
+        }
+    }
+
+    public class Thread_stopBroadcast extends Thread{
+
+        private Handler handler;
+
+        Thread_stopBroadcast(Handler handler){
+            this.handler = handler;
+        }
+
+        @Override
+        public void run() {
+
+            try{
+                Message m = new Message();
+
+                this.sleep(1000);
+
+                m.what = 5;
+                this.handler.sendMessage(m);
+                this.sleep(1000);
+
+                Message m2 = new Message();
+                m2.what = 4;
+                this.handler.sendMessage(m2);
+                this.sleep(1000);
+
+                Message m3 = new Message();
+                m3.what = 3;
+                this.handler.sendMessage(m3);
+                this.sleep(1000);
+
+                Message m4 = new Message();
+                m4.what = 2;
+                this.handler.sendMessage(m4);
+                this.sleep(1000);
+
+                Message m5 = new Message();
+                m5.what = 1;
+                this.handler.sendMessage(m5);
+                this.sleep(1000);
+
+                Message m6 = new Message();
+                m6.what = 0;
+                this.handler.sendMessage(m6);
+                this.sleep(1000);
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+
+        }
+    }
+
+    public class Handler_stopBroadcast extends Handler{
+
+
+        Animation alphaPriceBid = new AlphaAnimation(0, 1);
+
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what){
+                case 5:
+                    alphaPriceBid.setDuration(500);
+                    textView_priceBid.setText("방송 종료 5초전...");
+                    textView_priceBid.setAnimation(alphaPriceBid);
+                    break;
+                case 4:
+                    alphaPriceBid.setDuration(500);
+                    textView_priceBid.setText("방송 종료 4초전...");
+                    textView_priceBid.setAnimation(alphaPriceBid);
+                    break;
+                case 3:
+                    alphaPriceBid.setDuration(500);
+                    textView_priceBid.setText("방송 종료 3초전...");
+                    textView_priceBid.setAnimation(alphaPriceBid);
+                    break;
+                case 2:
+                    alphaPriceBid.setDuration(500);
+                    textView_priceBid.setText("방송 종료 2초전...");
+                    textView_priceBid.setAnimation(alphaPriceBid);
+                    break;
+                case 1:
+                    alphaPriceBid.setDuration(500);
+                    textView_priceBid.setText("방송 종료 1초전...");
+                    textView_priceBid.setAnimation(alphaPriceBid);
+                    break;
+                case 0:
+                    //방송 종료
+                    break;
+            }
         }
     }
 }

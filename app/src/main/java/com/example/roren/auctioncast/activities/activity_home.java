@@ -15,6 +15,8 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.example.roren.auctioncast.utility.utility_ether_connectToken;
+import com.example.roren.auctioncast.utility.utility_global_variable;
 import com.example.roren.auctioncast.utility.utility_http_DBQuery;
 
 import org.json.JSONArray;
@@ -43,6 +45,7 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
     Button button_start_broadcast;
     Button button_charge_cash;
     Button button_charge_coin;
+    Button button_contractInfo;
 
     TextView textView_id;
     TextView textView_cash;
@@ -69,10 +72,12 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
         button_start_broadcast = findViewById(R.id.activity_broadcasting_list_button_start_broadcast);
         button_charge_cash = findViewById(R.id.activity_broadcasting_list_button_chargeCash);
         button_charge_coin = findViewById(R.id.activity_broadcasting_list_button_chargeCoin);
+        button_contractInfo = findViewById(R.id.activity_broadcasting_list_button_contract_information);
 
         button_start_broadcast.setOnClickListener(this);
         button_charge_cash.setOnClickListener(this);
         button_charge_coin.setOnClickListener(this);
+        button_contractInfo.setOnClickListener(this);
 
         textView_id = findViewById(R.id.activity_broadcasting_list_textView_id);
         textView_cash = findViewById(R.id.activity_broadcasting_list_textView_cash);
@@ -152,7 +157,7 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
                         .setPositiveButton("확인", new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialogInterface, int i) {
-                                Intent intent = new Intent(context, activity_webView.class);
+                                Intent intent = new Intent(context, activity_kakaopay.class);
 
                                 intent.putExtra("total_amount", items[total_amount]);
 
@@ -174,6 +179,18 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
              * 코인충전 버튼
              */
             case R.id.activity_broadcasting_list_button_chargeCoin:
+                Intent i = new Intent(context, activity_ethereum.class);
+
+                startActivity(i);
+                break;
+
+            /**
+             * 거래정보 버튼
+             */
+            case R.id.activity_broadcasting_list_button_contract_information:
+                Intent intent2 = new Intent(context, activity_contractInfo.class);
+
+                startActivity(intent2);
                 break;
         }
     }
@@ -232,9 +249,30 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
             JSONObject jsonObject = json.getJSONObject(0);
 
             textView_cash.setText(jsonObject.getString("cash") + " 원");
+
+            utility_global_variable.WALLET_ADDRESS = jsonObject.getString("wallet_path");
+            utility_global_variable.WALLET_FILE_ADDRESS = jsonObject.getString("wallet_filepath");
         }catch (Exception e){
             e.printStackTrace();
         }
+
+        textView_coin.setVisibility(View.GONE);
+
+//        if(!utility_global_variable.WALLET_ADDRESS.equals("")){
+//            try{
+//                String coin = new utility_ether_connectToken(
+//                        utility_global_variable.CODE_ETHER_GET_BALANCE,
+//                        utility_global_variable.WALLET_ADDRESS,
+//                        utility_global_variable.WALLET_FILE_ADDRESS
+//                ).execute().get();
+//
+//                textView_coin.setText(coin + " 개");
+//            }catch (Exception e){
+//                e.printStackTrace();
+//            }
+//        }
+
+
 
     }
 }

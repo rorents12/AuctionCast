@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:id="@+id/recyclerView_item_contractInfo_linearLayout_sellFence"
+        android:layout_width="match_parent"
+        android:layout_height="20dp"
+        android:background="#AAee">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="판매"
+            android:gravity="center"
+            android:layout_gravity="center_vertical"
+            />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/recyclerView_item_contractInfo_linearLayout_buyFence"
+        android:layout_width="match_parent"
+        android:layout_height="20dp"
+        android:background="#FFaa"
+        >
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="구매"
+            android:gravity="center"
+            android:layout_gravity="center_vertical"
+            />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_marginLeft="10dp"
+        android:id="@+id/recyclerView_item_contractInfo_linearLayout_buyInfo"
+        android:layout_width="match_parent"
+        android:layout_height="70dp"
+        android:orientation="horizontal"
+        android:layout_gravity="center_vertical"
+        android:weightSum="1">
+
+        <TextView
+            android:id="@+id/recyclerView_item_contractInfo_textView_buyProduct"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:text="구매물품 - "
+            android:layout_weight="0.5"
+            android:gravity="center_vertical"
+            />
+
+        <TextView
+            android:id="@+id/recyclerView_item_contractInfo_textView_seller"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:text="판매자 - "
+            android:layout_weight="0.25"
+            android:gravity="center_vertical"
+            />
+
+        <TextView
+            android:id="@+id/recyclerView_item_contractInfo_textView_sellPrice"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:text="낙찰가 - "
+            android:layout_weight="0.25"
+            android:gravity="center_vertical"
+            />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_marginLeft="10dp"
+        android:id="@+id/recyclerView_item_contractInfo_linearLayout_sellInfo"
+        android:layout_width="match_parent"
+        android:layout_height="70dp"
+        android:orientation="horizontal"
+        android:layout_gravity="center_vertical"
+        android:weightSum="1">
+
+        <TextView
+            android:id="@+id/recyclerView_item_contractInfo_textView_sellProduct"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:text="판매물품 - "
+            android:layout_weight="0.5"
+            android:gravity="center_vertical"
+            />
+
+        <TextView
+            android:id="@+id/recyclerView_item_contractInfo_textView_buyer"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:text="구매자 - "
+            android:layout_weight="0.25"
+            android:gravity="center_vertical"
+            />
+
+        <TextView
+            android:id="@+id/recyclerView_item_contractInfo_textView_buyPrice"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:text="낙찰가 - "
+            android:layout_weight="0.25"
+            android:gravity="center_vertical"
+            />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0.5dp"
+        android:background="#000000">
+
+
+    </LinearLayout>
+
+
+
+
+
+</LinearLayout>

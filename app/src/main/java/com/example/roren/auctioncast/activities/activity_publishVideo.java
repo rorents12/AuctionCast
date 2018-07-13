@@ -1,6 +1,8 @@
 package com.example.roren.auctioncast.activities;
 
 import android.Manifest;
+import android.animation.Animator;
+import android.animation.TimeInterpolator;
 import android.content.DialogInterface;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
@@ -22,6 +24,11 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
+import android.view.animation.AnimationSet;
+import android.view.animation.RotateAnimation;
+import android.view.animation.TranslateAnimation;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -720,6 +727,9 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
         handleException(e);
     }
 
+    /**
+     * 서버로부터 채팅메시지가 도착하고, receiver에서 handler로 메시지가 전달된 후 메시지를 처리하는 method.
+     */
     public void receive_chatting(String string) throws Exception{
 
         int messageType = chattingUtility.getMessageType(string);
@@ -745,8 +755,15 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
 
                 layout_auction.setVisibility(View.VISIBLE);
 
+                // 경매 시스템 UI 등장 애니메이션
+                Animation alphaUI = new AlphaAnimation(0, 1);
+                alphaUI.setDuration(500);
+
+                layout_auction.startAnimation(alphaUI);
+
                 Toast.makeText(this, "경매가 시작되었습니다. 경매 시작가는 " + priceNow + "원 입니다.", Toast.LENGTH_LONG).show();
 
+                // 경매 시스템 UI 세팅
                 textView_priceNow.setText("경매 시작가 - " + priceNow + "원");
                 textView_bidder.setText("입찰자 - ");
 
@@ -760,6 +777,13 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
                 // 경매 종료 신호가 왔을 때
                 JSONObject json = chattingUtility.getMessageAuctionInfo(string);
 
+                // 경매 종료 시 텍스트 변경 애니메이션
+                Animation alphaPriceBid = new AlphaAnimation(0, 1);
+                alphaPriceBid.setDuration(500);
+
+                textView_priceBid.startAnimation(alphaPriceBid);
+
+                // 경매 종료 시 텍스트 변경
                 textView_priceNow.setText("낙찰가 - " + json.getString("price") + "원");
                 textView_bidder.setText("낙찰자 - " + json.getString("id"));
 
@@ -772,6 +796,18 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
 
                 textView_priceNow.setText("입찰가 - " + String.valueOf(priceNow) + "원");
                 textView_bidder.setText("입찰자 - " + chattingUtility.getMessageId(string));
+
+                // 입찰가 갱신 시 입찰자, 입찰가 항목 변경 애니메이션
+                Animation translateFromRight = new TranslateAnimation(1000, 0, 0, 0);
+                Animation translateFromLeft = new TranslateAnimation(-1000, 0, 0, 0);
+
+                translateFromRight.setDuration(250);
+                translateFromLeft.setDuration(250);
+
+                textView_priceNow.startAnimation(translateFromRight);
+                textView_bidder.startAnimation(translateFromLeft);
+
+
                 break;
         }
 

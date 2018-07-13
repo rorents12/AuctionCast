@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <TextView
+        android:id="@+id/activity_ethereum_textView_wallet"
+        android:layout_marginTop="40dp"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="지갑 주소"
+        android:textSize="40dp"/>
+
+    <TextView
+        android:id="@+id/activity_ethereum_textView_walletAddress"
+        android:layout_marginTop="10dp"
+        android:layout_below="@id/activity_ethereum_textView_wallet"
+        android:layout_centerHorizontal="true"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="15dp"
+        />
+
+    <TextView
+        android:id="@+id/activity_ethereum_textView_auctionCoin"
+        android:layout_centerInParent="true"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="보유 옥션코인 - 0 개"
+        android:textSize="30dp"/>
+
+    <Button
+        android:id="@+id/activity_ethereum_button_createWallet"
+        android:layout_centerInParent="true"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:text="지갑 만들기"/>
+
+</RelativeLayout>

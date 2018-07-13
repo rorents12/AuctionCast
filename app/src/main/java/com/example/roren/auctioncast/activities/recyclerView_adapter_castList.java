@@ -51,6 +51,7 @@ public class recyclerView_adapter_castList extends RecyclerView.Adapter<recycler
                 Intent intent = new Intent(context, activity_playVideo.class);
 
                 intent.putExtra("streamer_id", items.get(position).getId_broadcaster());
+                intent.putExtra("title", items.get(position).getTitle_broadcasting());
 
                 new utility_http_DBQuery().execute("update table_broadcasting_list set viewer_num=viewer_num-(-1) where broadcaster_id = '" + items.get(position).getId_broadcaster() + "'");
 //                new utility_http_DBQuery().execute("update table_broadcasting_list set viewer_num=viewer_num+1 where broadcaster_id = 'nova'");

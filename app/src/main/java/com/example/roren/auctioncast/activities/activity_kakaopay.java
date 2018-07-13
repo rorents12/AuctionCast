@@ -21,9 +21,8 @@ import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.HashMap;
-import java.util.Map;
 
-public class activity_webView extends AppCompatActivity {
+public class activity_kakaopay extends AppCompatActivity {
 
     // 카카오페이 REST API를 이용할 시, redirect url을 받아 웹 화면을 띄워주는 역할.
     private WebView webView;
@@ -31,7 +30,7 @@ public class activity_webView extends AppCompatActivity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_webview);
+        setContentView(R.layout.activity_kakaopay);
 
         webView = findViewById(R.id.activity_webView_webView);
 
