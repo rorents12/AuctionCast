@@ -63,10 +63,24 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 
+/**
+ *  사용자 자신의 이더리움 지갑 주소와, 현재 보유하고 있는 옥션코인(토큰)의 갯수를 보여주거나
+ *  사용자가 이더리움 지갑을 생성할 수 있는 액티비티
+ *
+ *  1. 사용자가 지갑을 보유하고 있을 경우
+ *  사용자의 이더리움 지갑 주소와 보유중인 옥션코인의 갯수를 보여준다.
+ *
+ *  2. 사용자가 지갑을 보유하고 있지 않을 경우
+ *  지갑 생성 버튼을 통해 이더리움 지갑을 생성할 수 있다.
+ *
+ */
+
 public class activity_ethereum extends AppCompatActivity implements View.OnClickListener{
 
+    // 지갑 생성 버튼
     Button button_createWallet;
 
+    // 지갑주소, 옥션코인 갯수를 나타내는 textView
     TextView textView_wallet, textView_walletAddress, textView_auctionCoin;
 
     @Override
@@ -81,27 +95,19 @@ public class activity_ethereum extends AppCompatActivity implements View.OnClick
         textView_walletAddress = findViewById(R.id.activity_ethereum_textView_walletAddress);
         textView_auctionCoin = findViewById(R.id.activity_ethereum_textView_auctionCoin);
 
-//        // 서버 DB에서 계정의 지갑 정보를 불러온다.
-//        try{
-//            JSONArray json = new utility_http_DBQuery().execute("select * from table_user_membership where id = '" + activity_login.user_id + "';").get();
-//            JSONObject j = json.getJSONObject(0);
-//
-//            walletAddress = j.getString("wallet_path");
-//            walletFileAddress = j.getString("wallet_filepath");
-//        }catch (Exception e){
-//        }
 
         // 지갑을 가지고 있으면 지갑 정보를, 지갑을 가지고 있지 않으면 지갑 생성 버튼을 보여준다.
-        Log.e("fsadfs", utility_global_variable.WALLET_ADDRESS);
-
         if(utility_global_variable.WALLET_ADDRESS.equals("null")){
+            // 지갑 정보가 없으므로, 지갑 생성 버튼을 제외한 view 들을 보이지 않게 처리
             textView_auctionCoin.setVisibility(View.INVISIBLE);
             textView_walletAddress.setVisibility(View.GONE);
             textView_wallet.setVisibility(View.GONE);
         }else{
+            // 지갑 정보가 있으므로, 지갑 생성 버튼의 visibility 를 gone 으로 처리
             button_createWallet.setVisibility(View.GONE);
             textView_walletAddress.setText(utility_global_variable.WALLET_ADDRESS);
             try{
+                // 옥션코인 잔액 조회
                 String coin = new utility_ether_connectToken(
                         utility_global_variable.CODE_ETHER_GET_BALANCE,
                         utility_global_variable.WALLET_ADDRESS,
@@ -115,6 +121,12 @@ public class activity_ethereum extends AppCompatActivity implements View.OnClick
 
     }
 
+    /**
+     *  지갑 생성 버튼을 눌렀을 때, 클릭 이벤트 처리
+     *  클릭 이벤트 발생 시, 다이얼로그의 editText 를 통해 지갑의 비밀번호를 입력할 수 있다.
+     *  비밀번호를 입력할 시 해당 비밀번호를 가진 이더리움 지갑 파일을 로컬 저장소에 생성하고,
+     *  해당 파일의 주소와 지갑 주소를 서버 DB 의 user_membership table 에 저장한다.
+     */
     @Override
     public void onClick(View view) {
         switch (view.getId()){
@@ -159,20 +171,31 @@ public class activity_ethereum extends AppCompatActivity implements View.OnClick
         }
     }
 
+    /**
+     * 이더리움 지갑을 생성해주는 method. parameter 로 비밀번호를 받아오고, 해당 비밀번호를 가진 이더리움 지갑 파일을
+     * 로컬 저장소에 생성한다. 지갑 파일 저장경로와 지갑 주소를 return 한다.
+     *
+     * @param password
+     *      지갑의 비밀번호
+     * @return
+     *      지갑 파일의 로컬 저장소 주소(filePath)와, 생성된 지갑의 주소를 담고 있는 String Array 를 return 한다.
+     */
     public String[] createWallet(final String password){
         String[] result = new String[2];
 
         try{
+            // 지갑 생성
             File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
             if(!path.exists()){
                 path.mkdir();
             }
             String fileName = WalletUtils.generateLightNewWalletFile(password, new File(String.valueOf(path)));
 
+            // 지갑 파일 경로 획득
             result[0] = path+"/"+fileName;
 
+            // 지갑 주소 획득
             Credentials credentials = WalletUtils.loadCredentials(password, result[0]);
-
             result[1] = credentials.getAddress();
 
             return result;

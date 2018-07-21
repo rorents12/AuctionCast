@@ -17,6 +17,13 @@ import java.util.ArrayList;
 
 import com.example.roren.auctioncast.R;
 
+/**
+ * activity_home 에서 방송목록을 보여주기 위한 recyclerView 에 setting 하는 adapter 이다.
+ *
+ * 방송 정보를 item 에 담아 onBindViewHolder 를 통해 view 에 setting 한다.
+ * 또한 item 자체에 onClickListener 를 setting 하여 목록을 터치 시 해당 방송정보를 가지고 activity_playVideo 로 이동하도록 한다.
+ */
+
 public class recyclerView_adapter_castList extends RecyclerView.Adapter<recyclerView_adapter_castList.ItemViewHolder>{
 
     ArrayList<recyclerView_item_castList> items;
@@ -45,6 +52,7 @@ public class recyclerView_adapter_castList extends RecyclerView.Adapter<recycler
         holder.id_broadcaster.setText("BJ " + items.get(i).getId_broadcaster());
         holder.num_viewer.setText(items.get(i).getNum_viewer() + "명 시청중");
 
+        // 방송목록 터치 시, 해당 방송을 볼 수 있는 activity_playVideo 로 이동
         holder.container.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -52,10 +60,13 @@ public class recyclerView_adapter_castList extends RecyclerView.Adapter<recycler
 
                 intent.putExtra("streamer_id", items.get(position).getId_broadcaster());
                 intent.putExtra("title", items.get(position).getTitle_broadcasting());
+                intent.putExtra("identity_num", items.get(position).getIdentity_num());
 
-                new utility_http_DBQuery().execute("update table_broadcasting_list set viewer_num=viewer_num-(-1) where broadcaster_id = '" + items.get(position).getId_broadcaster() + "'");
-//                new utility_http_DBQuery().execute("update table_broadcasting_list set viewer_num=viewer_num+1 where broadcaster_id = 'nova'");
-                context.startActivity(intent);
+                new utility_http_DBQuery()
+                        .execute("update table_broadcasting_list set viewer_num=viewer_num-(-1) where broadcaster_id = '"
+                                + items.get(position).getId_broadcaster()
+                                + "'");
+             context.startActivity(intent);
 
             }
         });

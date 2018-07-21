@@ -66,9 +66,48 @@ import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import com.example.roren.auctioncast.R;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import static com.example.roren.auctioncast.utility.utility_global_variable.HOST;
+
+/**
+ * 방송자가 방송을 시작할 수 있는 액티비티
+ *
+ * RTMP 프로토콜을 통해 동영상을 스트리밍 서버로 전송하는 부분과, netty 를 이용하여 채팅과 경매를 진행하는 부분으로 나뉜다.
+ *
+ * 1. RTMP 스트리밍
+ * 방송 시작 버튼을 누르면 서버 DB 에 방송목록 정보를 생성하고, 해당 정보에서 방송 고유번호를 가져와 RTMP streaming 의 url 로 설정한다.
+ *
+ * 2. 채팅과 경매 시스템
+ * netty 서버와의 소켓 연결을 통해 채팅과 경매를 진행한다.
+ * 이 activity 에서의 여러 행동들은 sendMessage method 를 통해 각각 netty 서버로 message 를 보내거나 받게 된다.
+ * 각 행동들은 고유의 code 를 포함한 message 를 전송하며, 고유 code 는 다음과 같다.
+ *
+ *      방송자가 서버로 보내는 message code
+ *          1) 방송 시작
+ *              code -> utility_global_variable.CODE_CHAT_MAKEROOM
+ *              서버에서 해당 code 를 파싱하여 새로운 채팅방 세션을 만든다.
+ *          2) 채팅 메시지 보내기
+ *              code -> utility_global_variable.CODE_CHAT_MESSAGE_GENERAL
+ *              서버에서 해당 code 를 파싱하여 사용자가 참여한 채팅방의 다른 사용자들에게 메시지를 전송한다.
+ *          3) 경매 시작
+ *              code -> utility_global_variable.CODE_CHAT_AUCTION_START
+ *              서버에서 해당 code 를 파싱하여 사용자가 참여한 채팅방의 다른 사용자들에게 경매 시작 신호를 전송한다.
+ *          4) 경매 종료
+ *              code -> utility_global_variable.CODE_CHAT_AUCTION_STOP
+ *              서버에서 해당 code 를 파싱하여 사용자가 참여한 채팅방의 다른 사용자들에게 경매 종료 신호를 전송한다.
+ *
+ *      방송자가 서버로부터 받는 message code
+ *          chatting_client_receiver 에서 받은 message 를 이 activity 의 handler 로 보내고, handler 에서 receive_chatting method 를 이용하여
+ *          각 code 에 맞는 처리를 진행한다.
+ *
+ *          1) 채팅 메시지 받기
+ *              code -> utility_global_variable.CODE_CHAT_MESSAGE_GENERAL
+ *          2) 경매 입찰 정보
+ *              code -> utility_global_variable.CODE_CHAT_PRICE_RAISE
+ *
+ **/
 
 public class activity_publishVideo extends AppCompatActivity implements RtmpHandler.RtmpListener, SrsRecordHandler.SrsRecordListener, SrsEncodeHandler.SrsEncodeListener{
 
@@ -77,35 +116,53 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
      */
     private static final String TAG = "Yasea";
 
-    private int REQUEST_CAMERA;
-
     private Button btnPublish;
     private Button btnSwitchCamera;
-    private Button btnRecord;
-    private Button btnSwitchEncoder;
-
-    private EditText editText_chat;
 
     private String rtmpUrl;
-    private String recPath = Environment.getExternalStorageDirectory().getPath() + "/test.mp4";
 
     private SrsPublisher mPublisher;
 
     /**
      * 채팅을 위한 변수
      */
+//    private RecyclerView recyclerView_chatting;
+//    private recyclerView_adapter_chatting adapter_broadcasting_chatting;
+//    private ArrayList<recyclerView_item_chatting> items;
+//
+//    private Button btnSend;
+//    private EditText editText_chat;
+//
+//    private chatting_utility chattingUtility;
+//
+//    private Channel channel;
+//
+//    private Handler handler;
+//    private chatting_client_receiver receiver;
+//
+//    private String roomCode;
+
+    // 채팅 UI를 위한 View 변수
+    private EditText editText_chat;
+    private Button btnSend;
+
+    // 채팅을 표시하는 recyclerView의 변수
     private RecyclerView recyclerView_chatting;
     private recyclerView_adapter_chatting adapter_broadcasting_chatting;
     private ArrayList<recyclerView_item_chatting> items;
 
-    private Button btnSend;
-
+    // 채팅 메시지를 parsing, compressing, sending 하는 클래스.
     private chatting_utility chattingUtility;
 
+    // netty 채팅 서버와 연결했을 때 해당 서버와 연결을 지속하게 해주고, 메시지를 주고 받을 수 있게 해주는 클래스.
     private Channel channel;
 
+    // netty 채팅 서버에서 메시지가 왔을 때 해당 메시지를 받아주는 receiver, receiver로부터 메시지를 전달받아 recyclerView를 업데이트 하는 handler.
     private Handler handler;
     private chatting_client_receiver receiver;
+
+    // netty 채팅 서버에 접속할 때, 사용자가 속한 방에 대한 정보를 나타내는 변수
+    private String roomCode;
 
     /**
      * 경매 시스템을 위한 변수
@@ -120,18 +177,6 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
     private LinearLayout layout_auction;
 
     private int priceNow;
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-        if(grantResults[0] == PackageManager.PERMISSION_GRANTED){
-            Log.v(TAG,"Permission: "+permissions[0]+ "was "+grantResults[0]);
-        }else{
-            finish();
-        }
-
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -157,6 +202,12 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
         btnBidUp = findViewById(R.id.auction_button_bid_up);
         btnBidDown = findViewById(R.id.auction_button_bid_down);
 
+        // 경매 시작 버튼을 눌렀을 시
+        // 다이얼로그를 통해 경매 시작가를 입력하고, 채팅 서버에 경매 시작 code 를 포함한 메시지를 전송하여
+        // 시청자들에게 경매가 시작되었음을 알린다.
+        // 경매 시작을 누름과 동시에 버튼은 '경매 종료' 버튼으로 변하게 된다.
+        // 경매 종료 버튼을 누르면 시작때와 마찬가지로 다른 사용자들에게 경매 종료 code 를 포함한 메시지를 전송하여
+        // 시청자들에게 경매가 종료되었음을 알린다.
         btnStartAuction.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -175,7 +226,7 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
                                                     channel,
                                                     activity_login.user_id,
                                                     et.getText().toString(),
-                                                    activity_login.user_id
+                                                    roomCode
                                             );
                                             btnStartAuction.setText("경매 종료");
                                         }catch (Exception e){
@@ -199,7 +250,8 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
                                     utility_global_variable.CODE_CHAT_STOP_AUCTION,
                                     channel,
                                     activity_login.user_id,
-                                    "경매 종료", activity_login.user_id
+                                    "경매 종료",
+                                    roomCode
                             );
                             btnStartAuction.setVisibility(View.GONE);
                         }catch (Exception e){
@@ -220,6 +272,8 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
          * 채팅을 위한 세팅
          */
 
+        // 채팅 메시지 업데이트를 위한 handler 선언
+        // chatting_client_receiver 를 통해 받은 메시지를 해당 handler 로 전송하여 처리한다.
         handler = new Handler(){
             @Override
             public void handleMessage(Message msg) {
@@ -235,13 +289,12 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
         };
 
         receiver = new chatting_client_receiver(handler);
-
         chattingUtility = new chatting_utility();
 
         editText_chat = findViewById(R.id.activity_broadcasting_editText_chatText);
-
         btnSend = (Button) findViewById(R.id.activity_broadcasting_button_send);
 
+        // 전송 버튼을 눌렀을 때 동작 정의
         btnSend.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -262,7 +315,8 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
                                 channel,
                                 activity_login.user_id,
                                 editText_chat.getText().toString(),
-                                activity_login.user_id);
+                                roomCode
+                        );
 
                         editText_chat.setText("");
 
@@ -284,173 +338,150 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
         /**
          * RTMP 송출을 위한 세팅
          */
-        int permissionCheck = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO);
 
-        if(permissionCheck == PackageManager.PERMISSION_DENIED){
-            Log.e("퍼미션퍼미션!", "퍼미션 허용 안돼있음");
+        // initialize url.
 
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO}, REQUEST_CAMERA);
+        btnPublish = (Button) findViewById(R.id.publish);
+        btnSwitchCamera = (Button) findViewById(R.id.swCam);
 
-        }else{
-            Log.e("퍼미션퍼미션!", "퍼미션 허용 돼있음");
+        mPublisher = new SrsPublisher((SrsCameraView) findViewById(R.id.glsurfaceview_camera));
+        mPublisher.setEncodeHandler(new SrsEncodeHandler(this));
+        mPublisher.setRtmpHandler(new RtmpHandler(this));
+        mPublisher.setRecordHandler(new SrsRecordHandler(this));
+        mPublisher.setPreviewResolution(640, 360);
+        mPublisher.setOutputResolution(360, 640);
+        mPublisher.setVideoHDMode();
+        mPublisher.startCamera();
 
-            rtmpUrl  = "rtmp://52.41.99.92/mytv/" + getIntent().getStringExtra("streamer_id");
+        // 방송 시작 버튼 클릭 이벤트 시
+        // 방송 제목을 다이얼로그로 입력 받고, 해당 방송제목으로 서버 DB 에 방송 정보를 생성한다.
+        // 생성한 방송 정보로부터 방송 고유번호를 받아와 rtmp url 을 생성하고, 스트리밍을 시작한다.
+        // 또한 방송을 시작함과 동시에 netty 서버와 연결하여 채팅 세션을 만든다.
+        // 방송 시작 후에는 버튼이 'stop'으로 표기되며, 이 때 버튼을 클릭하면 방송을 종료하게 된다.
+        btnPublish.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (btnPublish.getText().toString().contentEquals("publish")) {
 
-            // initialize url.
-            final EditText efu = (EditText) findViewById(R.id.url);
-            efu.setText(rtmpUrl);
+                    // 방송제목 입력 다이얼로그 띄우기
+                    AlertDialog.Builder ad = new AlertDialog.Builder(activity_publishVideo.this);
 
-            btnPublish = (Button) findViewById(R.id.publish);
-            btnSwitchCamera = (Button) findViewById(R.id.swCam);
-            btnRecord = (Button) findViewById(R.id.record);
-            btnSwitchEncoder = (Button) findViewById(R.id.swEnc);
+                    ad.setTitle("방송 제목");
+                    ad.setMessage("방송의 제목을 입력하세요.");
 
-            btnRecord.setVisibility(View.GONE);
-            btnSwitchEncoder.setVisibility(View.GONE);
-            efu.setVisibility(View.GONE);
+                    final EditText et = new EditText(activity_publishVideo.this);
+                    ad.setView(et);
 
-            mPublisher = new SrsPublisher((SrsCameraView) findViewById(R.id.glsurfaceview_camera));
-            mPublisher.setEncodeHandler(new SrsEncodeHandler(this));
-            mPublisher.setRtmpHandler(new RtmpHandler(this));
-            mPublisher.setRecordHandler(new SrsRecordHandler(this));
-            mPublisher.setPreviewResolution(640, 360);
-            mPublisher.setOutputResolution(360, 640);
-            mPublisher.setVideoHDMode();
-            mPublisher.startCamera();
+                    ad.setPositiveButton("확인", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            if(et.getText().toString().equals("")){
+                                Toast.makeText(activity_publishVideo.this, "방송 제목을 입력해야합니다.", Toast.LENGTH_SHORT);
+                            }else{
 
-            btnPublish.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if (btnPublish.getText().toString().contentEquals("publish")) {
+                                // 방송 송출을 시작하면 소켓에 연결 후, 채팅 채널을 만든다.
+                                EventLoopGroup group = new NioEventLoopGroup();
 
-                        // 방송제목 입력 다이얼로그 띄우기
+                                try{
+                                    // http 통신을 통해 방송정보 업로드
+                                    new utility_http_DBQuery()
+                                            .execute("insert into table_broadcasting_list (title, broadcaster_id, broadcast_start_time)"
+                                                    + " values ('"
+                                                    + et.getText().toString()
+                                                    + "','"
+                                                    + getIntent().getStringExtra("streamer_id")
+                                                    + "','a');").get();
 
-                        AlertDialog.Builder ad = new AlertDialog.Builder(activity_publishVideo.this);
+                                    // http 통신을 통해 방송의 고유번호 획득
+                                    JSONArray jsonArray = new utility_http_DBQuery()
+                                            .execute("select * from table_broadcasting_list where broadcaster_id = '"
+                                                    + activity_login.user_id
+                                                    + "';").get();
+                                    roomCode = jsonArray.getJSONObject(0).getString("identity_num");
 
-                        ad.setTitle("방송 제목");
-                        ad.setMessage("방송의 제목을 입력하세요.");
+                                    // 채팅 세션 생성
+                                    final SslContext sslCtx = SslContextBuilder.forClient()
+                                            .trustManager(InsecureTrustManagerFactory.INSTANCE).build();
 
-                        final EditText et = new EditText(activity_publishVideo.this);
-                        ad.setView(et);
+                                    Bootstrap bootstrap = new Bootstrap();
+                                    bootstrap.group(group)
+                                            .channel(NioSocketChannel.class)
+                                            .handler(new chatting_client_initializer(sslCtx, receiver));
 
-                        ad.setPositiveButton("확인", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialogInterface, int i) {
-                                   if(et.getText().toString().equals("")){
-                                      Toast.makeText(activity_publishVideo.this, "방송 제목을 입력해야합니다.", Toast.LENGTH_SHORT);
-                                   }else{
-                                       // 방송 송출을 시작하면 소켓에 연결 후, 채팅 채널을 만든다.
-                                       EventLoopGroup group = new NioEventLoopGroup();
+                                    channel = bootstrap.connect(
+                                            utility_global_variable.HOST,
+                                            utility_global_variable.PORT
+                                    ).sync().channel();
 
-                                       try{
-                                           final SslContext sslCtx = SslContextBuilder.forClient()
-                                                   .trustManager(InsecureTrustManagerFactory.INSTANCE).build();
+                                    // 방송자 최초 연결 시 방만들기를 위해 서버에게 메시지를 보낸다
+                                    chattingUtility.sendMessage(
+                                            utility_global_variable.CODE_CHAT_MAKEROOM,
+                                            channel,
+                                            activity_login.user_id,
+                                            "방 만들기",
+                                            roomCode
+                                    );
 
-                                           Bootstrap bootstrap = new Bootstrap();
-                                           bootstrap.group(group)
-                                                   .channel(NioSocketChannel.class)
-                                                   .handler(new chatting_client_initializer(sslCtx, receiver));
+                                }catch (Exception e){
+                                    e.printStackTrace();
+                                }
 
-                                           channel = bootstrap.connect(utility_global_variable.HOST, utility_global_variable.PORT).sync().channel();
+                                // 방송 송출 코드
+                                rtmpUrl  = "rtmp://52.41.99.92/mytv/" + roomCode;
 
-                                           //방송자 최초 연결 시 방만들기를 위해 서버에게 메시지를 보낸다
-                                           chattingUtility.sendMessage(utility_global_variable.CODE_CHAT_MAKEROOM, channel, activity_login.user_id, "방 만들기", activity_login.user_id);
+                                mPublisher.startPublish(rtmpUrl);
+                                mPublisher.startCamera();
 
-                                       }catch (Exception e){
-                                           e.printStackTrace();
-                                       }
+                                btnPublish.setText("stop");
 
-                                       // 방송 송출 코드
-                                       rtmpUrl = efu.getText().toString();
-
-                                       mPublisher.startPublish(rtmpUrl);
-                                       mPublisher.startCamera();
-
-                                       if (btnSwitchEncoder.getText().toString().contentEquals("soft encoder")) {
-                                           Toast.makeText(getApplicationContext(), "Use hard encoder", Toast.LENGTH_SHORT).show();
-                                       } else {
-                                           Toast.makeText(getApplicationContext(), "Use soft encoder", Toast.LENGTH_SHORT).show();
-                                       }
-                                       btnPublish.setText("stop");
-
-                                       // 방송 시작 시 경매시작 버튼이 보이게 됨
-                                       btnStartAuction.setVisibility(View.VISIBLE);
-
-                                       //http 통신을 통해 방송정보 업로드
-
-                                        new utility_http_DBQuery().execute("insert into table_broadcasting_list (title, broadcaster_id, broadcast_start_time)" +
-                                                " values ('" + et.getText().toString() + "','" + getIntent().getStringExtra("streamer_id") + "','" + "a" + "');");
-
-                                       btnSwitchEncoder.setEnabled(false);
-                                   }
+                                // 방송 시작 시 경매시작 버튼이 보이게 됨
+                                btnStartAuction.setVisibility(View.VISIBLE);
                             }
-                        });
-
-                        ad.setNeutralButton("취소", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialogInterface, int i) {
-                                dialogInterface.dismiss();
-                            }
-                        });
-
-                        ad.show();
-
-                    } else if (btnPublish.getText().toString().contentEquals("stop")) {
-                        mPublisher.stopPublish();
-                        mPublisher.stopRecord();
-                        btnPublish.setText("publish");
-                        btnRecord.setText("record");
-                        btnSwitchEncoder.setEnabled(true);
-                        btnStartAuction.setVisibility(View.GONE);
-
-                        try{
-                            chattingUtility.sendMessage(utility_global_variable.CODE_CHAT_EXIT, channel, activity_login.user_id, "방 나가기", activity_login.user_id);
-                        }catch (Exception e){
-                            e.printStackTrace();
                         }
+                    });
 
-                        new utility_http_DBQuery().execute("delete from table_broadcasting_list where broadcaster_id = '" + getIntent().getStringExtra("streamer_id") + "'");
-                    }
-                }
-            });
-
-            btnSwitchCamera.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    mPublisher.switchCameraFace((mPublisher.getCamraId() + 1) % Camera.getNumberOfCameras());
-                }
-            });
-
-            btnRecord.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if (btnRecord.getText().toString().contentEquals("record")) {
-                        if (mPublisher.startRecord(recPath)) {
-                            btnRecord.setText("pause");
+                    ad.setNeutralButton("취소", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            dialogInterface.dismiss();
                         }
-                    } else if (btnRecord.getText().toString().contentEquals("pause")) {
-                        mPublisher.pauseRecord();
-                        btnRecord.setText("resume");
-                    } else if (btnRecord.getText().toString().contentEquals("resume")) {
-                        mPublisher.resumeRecord();
-                        btnRecord.setText("pause");
-                    }
-                }
-            });
+                    });
 
-            btnSwitchEncoder.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if (btnSwitchEncoder.getText().toString().contentEquals("soft encoder")) {
-                        mPublisher.switchToSoftEncoder();
-                        btnSwitchEncoder.setText("hard encoder");
-                    } else if (btnSwitchEncoder.getText().toString().contentEquals("hard encoder")) {
-                        mPublisher.switchToHardEncoder();
-                        btnSwitchEncoder.setText("soft encoder");
+                    ad.show();
+
+                } else if (btnPublish.getText().toString().contentEquals("stop")) {
+                    // 방송 중지 버튼을 눌렀을 때
+                    mPublisher.stopPublish();
+                    mPublisher.stopRecord();
+                    btnPublish.setText("publish");
+                    btnStartAuction.setVisibility(View.GONE);
+
+                    try{
+                        chattingUtility.sendMessage(
+                                utility_global_variable.CODE_CHAT_EXIT,
+                                channel,
+                                activity_login.user_id,
+                                "방 나가기",
+                                roomCode
+                        );
+                    }catch (Exception e){
+                        e.printStackTrace();
                     }
+
+                    new utility_http_DBQuery()
+                            .execute("delete from table_broadcasting_list where broadcaster_id = '"
+                                    + getIntent().getStringExtra("streamer_id")
+                                    + "';");
                 }
-            });
-        }
+            }
+        });
+
+        btnSwitchCamera.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mPublisher.switchCameraFace((mPublisher.getCamraId() + 1) % Camera.getNumberOfCameras());
+            }
+        });
 
 
     }
@@ -548,11 +579,19 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
         mPublisher.stopRecord();
 
         try{
-            chattingUtility.sendMessage(utility_global_variable.CODE_CHAT_EXIT, channel, activity_login.user_id, "방 나가기", activity_login.user_id);
+            chattingUtility.sendMessage(
+                    utility_global_variable.CODE_CHAT_EXIT,
+                    channel,
+                    activity_login.user_id,
+                    "방 나가기",
+                    roomCode);
         }catch (Exception e){
             e.printStackTrace();
         }
-        new utility_http_DBQuery().execute("delete from table_broadcasting_list where broadcaster_id = '" + getIntent().getStringExtra("streamer_id") + "'");
+        new utility_http_DBQuery()
+                .execute("delete from table_broadcasting_list where broadcaster_id = '"
+                        + getIntent().getStringExtra("streamer_id")
+                        + "';");
     }
 
     @Override
@@ -560,7 +599,7 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
         super.onConfigurationChanged(newConfig);
         mPublisher.stopEncode();
         mPublisher.stopRecord();
-        btnRecord.setText("record");
+//        btnRecord.setText("record");
         mPublisher.setScreenOrientation(newConfig.orientation);
         if (btnPublish.getText().toString().contentEquals("stop")) {
             mPublisher.startEncode();
@@ -596,8 +635,8 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
             mPublisher.stopPublish();
             mPublisher.stopRecord();
             btnPublish.setText("publish");
-            btnRecord.setText("record");
-            btnSwitchEncoder.setEnabled(true);
+//            btnRecord.setText("record");
+//            btnSwitchEncoder.setEnabled(true);
         } catch (Exception e1) {
             //
         }
@@ -728,7 +767,9 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
     }
 
     /**
-     * 서버로부터 채팅메시지가 도착하고, receiver에서 handler로 메시지가 전달된 후 메시지를 처리하는 method.
+     * 서버로부터 채팅메시지가 도착하고, receiver 에서 handler 로 메시지가 전달된 후 메시지를 처리하는 method.
+     * chatting_utility class 를 이용하여 message 로 부터 messageType(Code)를 파싱하여 어떤 message 인지 파악하고,
+     * switch 문을 통해 각 Type 의 message 를 처리한다.
      */
     public void receive_chatting(String string) throws Exception{
 
@@ -742,6 +783,11 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
 
                 item.setId(chattingUtility.getMessageId(string));
                 item.setText(chattingUtility.getMessageText(string));
+                item.setRoomCode(roomCode);
+
+                if(!chattingUtility.getMessageId(string).equals(activity_login.user_id)){
+                    item.setTimeStamp(chattingUtility.getMessageTimeStamp(string));
+                }
 
                 adapter_broadcasting_chatting.addItem(item);
                 adapter_broadcasting_chatting.notifyDataSetChanged();

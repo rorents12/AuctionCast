@@ -36,6 +36,7 @@
         android:layout_height="wrap_content"
         android:text="record"
         android:id="@+id/record"
+        android:visibility="gone"
         android:layout_alignBottom="@+id/publish"
         android:layout_toRightOf="@id/swCam" />
 
@@ -44,6 +45,7 @@
         android:layout_height="wrap_content"
         android:text="soft encoder"
         android:id="@+id/swEnc"
+        android:visibility="gone"
         android:layout_alignBottom="@+id/publish"
         android:layout_toRightOf="@id/record"
         android:layout_alignParentRight="true"
@@ -53,6 +55,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textSize="14dp"
+        android:visibility="gone"
         android:id="@+id/url"
         android:textColor="@color/accent_material_light" />
 

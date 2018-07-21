@@ -56,11 +56,41 @@ import org.json.JSONObject;
 /**
  * 시청자가 방송을 볼 수 있는 액티비티.
  *
- * ExoPlayer를 이용하여 RTMP 프로토콜을 통해 동영상을 스트리밍 하는 부분과, netty를 이용하여 채팅을 하는 부분으로 나뉜다.
+ * ExoPlayer를 이용하여 RTMP 프로토콜을 통해 동영상을 스트리밍 하는 부분과, netty 를 이용하여 채팅과 경매를 진행하는 부분으로 나뉜다.
  *
  * 1. RTMP 스트리밍
+ * activity_home 에서 방송목록을 터치하면 해당 방송의 정보를 intent 를 통해 이 activity 로 넘기게 된다.
+ * 넘겨받은 방송정보 중 방송의 고유번호를 통해 RTMP Streaming 의 url 을 세팅하고 스트리밍을 시작한다.
  *
- * 2. 채팅
+ * 2. 채팅과 경매 시스템
+ * netty 서버와의 소켓 연결을 통해 채팅과 경매를 진행한다.
+ * 이 activity 에서의 여러 행동들은 sendMessage method 를 통해 각각 netty 서버로 message 를 보내거나 받게 된다.
+ * 각 행동들은 고유의 code 를 포함한 message 를 전송하며, 고유 code 는 다음과 같다.
+ *
+ *      시청자가 서버로 보내는 message code
+ *          1) 방송 참여
+ *              code -> utility_global_variable.CODE_CHAT_ENTRANCE
+ *              서버에서 해당 code 를 파싱하여 사용자를 채팅방 세션에 추가한다.
+ *          2) 채팅 메시지 보내기
+ *              code -> utility_global_variable.CODE_CHAT_MESSAGE_GENERAL
+ *              서버에서 해당 code 를 파싱하여 사용자가 참여한 채팅방의 다른 사용자들에게 메시지를 전송한다.
+ *          3) 경매 입찰
+ *              code -> utility_global_variable.CODE_CHAT_PRICE_RAISE
+ *              서버에서 해당 code 를 파싱하여 사용자가 참여한 채팅방의 다른 사용자들에게 경매 입찰 정보를 전송하고, 경매 정보를 업데이트한다.
+ *
+ *      시청자가 서버로부터 받는 message code
+ *          chatting_client_receiver 에서 받은 message 를 이 activity 의 handler 로 보내고, handler 에서 receive_chatting method 를 이용하여
+ *          각 code 에 맞는 처리를 진행한다.
+ *
+ *          1) 채팅 메시지 받기
+ *              code -> utility_global_variable.CODE_CHAT_MESSAGE_GENERAL
+ *          2) 경매 시작 신호
+ *              code -> utility_global_variable.CODE_CHAT_AUCTION_START
+ *          3) 경매 입찰 정보
+ *              code -> utility_global_variable.CODE_CHAT_PRICE_RAISE
+ *          4) 경매 종료 신호
+ *              code -> utility_global_variable.CODE_CHAT_AUCTION_STOP
+ *
  **/
 
 public class activity_playVideo extends AppCompatActivity{
@@ -91,8 +121,9 @@ public class activity_playVideo extends AppCompatActivity{
     private Handler handler;
     private chatting_client_receiver receiver;
 
-    // netty 채팅 서버에 접속할 때, 사용자가 속한 방에 대한 정보를 나타내는 roomCode
+    // netty 채팅 서버에 접속할 때, 사용자가 속한 방에 대한 정보를 나타내는 변수들
     private String roomCode;
+    private String streamer_id;
     private String title;
 
     /**
@@ -118,10 +149,12 @@ public class activity_playVideo extends AppCompatActivity{
          * onCreate 내의 채팅부분
          */
         // 채팅 방을 구분하기 위한 roomCode 선언
-        roomCode = getIntent().getStringExtra("streamer_id");
+        roomCode = getIntent().getStringExtra("identity_num");
+        streamer_id = getIntent().getStringExtra("streamer_id");
         title = getIntent().getStringExtra("title");
 
         // 채팅 메시지 업데이트를 위한 handler 선언
+        // chatting_client_receiver 를 통해 받은 메시지를 해당 handler 로 전송하여 처리한다.
         handler = new Handler(){
             @Override
             public void handleMessage(Message msg) {
@@ -161,7 +194,8 @@ public class activity_playVideo extends AppCompatActivity{
                     utility_global_variable.CODE_CHAT_ENTRANCE,
                     channel,
                     activity_login.user_id,
-                    "방 입장", roomCode
+                    "방 입장",
+                    roomCode
             );
 
         }catch (Exception e){
@@ -197,6 +231,8 @@ public class activity_playVideo extends AppCompatActivity{
                                 roomCode
                         );
 
+
+
                         editText_chat.setText("");
                     }
                 }catch (Exception e){
@@ -227,11 +263,15 @@ public class activity_playVideo extends AppCompatActivity{
         btnBidUp = findViewById(R.id.auction_button_bid_up);
         btnBidDown = findViewById(R.id.auction_button_bid_down);
 
+        // 입찰 버튼 클릭 이벤트 정의
+        // 현재 입찰가를 확인한 후, 사용자가 입찰 할 금액이 현재 입찰가보다 같거나 낮으면
+        // 입찰 할 수 없다는 메시지를 띄워준다.
         btnBid.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                int priceBid = Integer.parseInt(textView_priceBid.getText().toString());
 
+                // 현재 입찰가 확인, 입찰할 금액과 비교
+                int priceBid = Integer.parseInt(textView_priceBid.getText().toString());
                 if(priceBid > priceNow){
                     try{
                         chattingUtility.sendMessage(
@@ -241,8 +281,6 @@ public class activity_playVideo extends AppCompatActivity{
                                 String.valueOf(priceBid),
                                 roomCode
                         );
-
-                        System.out.println("확인했습니다.");
                     }catch (Exception e){
                         e.printStackTrace();
                     }
@@ -256,6 +294,8 @@ public class activity_playVideo extends AppCompatActivity{
             }
         });
 
+        // 입찰 금액 증가 버튼 클릭 이벤트 정의
+        // 입찰할 금액을 1000원 올린다.
         btnBidUp.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -264,6 +304,8 @@ public class activity_playVideo extends AppCompatActivity{
             }
         });
 
+        // 입찰 금액 감소 버튼 클릭 이벤트 정의
+        // 입찰할 금액을 1000원 내린다.
         btnBidDown.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -291,7 +333,7 @@ public class activity_playVideo extends AppCompatActivity{
 
         // This is the MediaSource representing the media to be played.
         MediaSource videoSource = new ExtractorMediaSource.Factory(rtmpDataSourceFactory)
-                .createMediaSource(Uri.parse("rtmp://52.41.99.92/mytv/" + getIntent().getStringExtra("streamer_id")));
+                .createMediaSource(Uri.parse("rtmp://52.41.99.92/mytv/" + roomCode));
 
         // Prepare the player with the source.
         player.prepare(videoSource);
@@ -327,17 +369,27 @@ public class activity_playVideo extends AppCompatActivity{
         player.stop();
 
         try{
-            chattingUtility.sendMessage(utility_global_variable.CODE_CHAT_EXIT, channel, activity_login.user_id, "방 나가기", getIntent().getStringExtra("streamer_id"));
+            chattingUtility.sendMessage(
+                    utility_global_variable.CODE_CHAT_EXIT,
+                    channel,
+                    activity_login.user_id,
+                    "방 나가기",
+                    roomCode);
         }catch (Exception e){
             e.printStackTrace();
         }
 
-        new utility_http_DBQuery().execute("update table_broadcasting_list set viewer_num=viewer_num-1 where broadcaster_id = '" + getIntent().getStringExtra("streamer_id") + "'");
+        // 시청자가 나갈 때, 서버 방송목록 정보의 시청자수에 -1 연산을 해준다.
+        new utility_http_DBQuery()
+                .execute("update table_broadcasting_list set viewer_num=viewer_num-1 where broadcaster_id = '"
+                        + getIntent().getStringExtra("streamer_id") + "'");
 
     }
 
     /**
-     * 서버로부터 채팅메시지가 도착하고, receiver에서 handler로 메시지가 전달된 후 메시지를 처리하는 method.
+     * 서버로부터 채팅메시지가 도착하고, receiver 에서 handler 로 메시지가 전달된 후 메시지를 처리하는 method.
+     * chatting_utility class 를 이용하여 message 로 부터 messageType(Code)를 파싱하여 어떤 message 인지 파악하고,
+     * switch 문을 통해 각 Type 의 message 를 처리한다.
      */
     public void receive_chatting(String string) throws Exception{
         int messageType = chattingUtility.getMessageType(string);
@@ -350,6 +402,11 @@ public class activity_playVideo extends AppCompatActivity{
 
                 item.setId(chattingUtility.getMessageId(string));
                 item.setText(chattingUtility.getMessageText(string));
+                item.setRoomCode(roomCode);
+
+                if(!chattingUtility.getMessageId(string).equals(activity_login.user_id)){
+                    item.setTimeStamp(chattingUtility.getMessageTimeStamp(string));
+                }
 
                 adapter_broadcasting_chatting.addItem(item);
                 adapter_broadcasting_chatting.notifyDataSetChanged();
@@ -419,7 +476,7 @@ public class activity_playVideo extends AppCompatActivity{
                     // 경매 종료 시 낙찰자는 서버 DB에 거래 정보를 업로드한다.
                     new utility_http_DBQuery().execute(
                             "insert into table_contract_information (seller, buyer, price, title) values('"
-                                    + roomCode + "','" + activity_login.user_id + "'," + json.getString("price")
+                                    + streamer_id + "','" + activity_login.user_id + "'," + json.getString("price")
                                     + ",'" + title + "');").get();
                 }
 
@@ -443,97 +500,6 @@ public class activity_playVideo extends AppCompatActivity{
                 textView_bidder.startAnimation(translateFromLeft);
 
                 break;
-        }
-    }
-
-    public class Thread_stopBroadcast extends Thread{
-
-        private Handler handler;
-
-        Thread_stopBroadcast(Handler handler){
-            this.handler = handler;
-        }
-
-        @Override
-        public void run() {
-
-            try{
-                Message m = new Message();
-
-                this.sleep(1000);
-
-                m.what = 5;
-                this.handler.sendMessage(m);
-                this.sleep(1000);
-
-                Message m2 = new Message();
-                m2.what = 4;
-                this.handler.sendMessage(m2);
-                this.sleep(1000);
-
-                Message m3 = new Message();
-                m3.what = 3;
-                this.handler.sendMessage(m3);
-                this.sleep(1000);
-
-                Message m4 = new Message();
-                m4.what = 2;
-                this.handler.sendMessage(m4);
-                this.sleep(1000);
-
-                Message m5 = new Message();
-                m5.what = 1;
-                this.handler.sendMessage(m5);
-                this.sleep(1000);
-
-                Message m6 = new Message();
-                m6.what = 0;
-                this.handler.sendMessage(m6);
-                this.sleep(1000);
-            }catch (Exception e){
-                e.printStackTrace();
-            }
-
-        }
-    }
-
-    public class Handler_stopBroadcast extends Handler{
-
-
-        Animation alphaPriceBid = new AlphaAnimation(0, 1);
-
-        @Override
-        public void handleMessage(Message msg) {
-            switch (msg.what){
-                case 5:
-                    alphaPriceBid.setDuration(500);
-                    textView_priceBid.setText("방송 종료 5초전...");
-                    textView_priceBid.setAnimation(alphaPriceBid);
-                    break;
-                case 4:
-                    alphaPriceBid.setDuration(500);
-                    textView_priceBid.setText("방송 종료 4초전...");
-                    textView_priceBid.setAnimation(alphaPriceBid);
-                    break;
-                case 3:
-                    alphaPriceBid.setDuration(500);
-                    textView_priceBid.setText("방송 종료 3초전...");
-                    textView_priceBid.setAnimation(alphaPriceBid);
-                    break;
-                case 2:
-                    alphaPriceBid.setDuration(500);
-                    textView_priceBid.setText("방송 종료 2초전...");
-                    textView_priceBid.setAnimation(alphaPriceBid);
-                    break;
-                case 1:
-                    alphaPriceBid.setDuration(500);
-                    textView_priceBid.setText("방송 종료 1초전...");
-                    textView_priceBid.setAnimation(alphaPriceBid);
-                    break;
-                case 0:
-                    //방송 종료
-                    break;
-            }
         }
     }
 }

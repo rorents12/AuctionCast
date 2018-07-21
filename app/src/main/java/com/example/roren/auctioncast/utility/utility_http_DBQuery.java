@@ -13,11 +13,20 @@ import java.io.PrintWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
+/**
+ * http 통신을 통해 서버 DB 에 접근하고자 할 때, 쿼리문을 execute method 의 parameter 로 넣고 실행하면
+ * 해당 쿼리문의 결과값을 JSONArray 형태로 return 해주는 AsyncTask class 이다.
+ *
+ * new utility_http_DBQuery().execute("query").get 을 통해 손쉽게 쿼리의 결과를 JSONArray 로 받아올 수 있다.
+ */
+
 public class utility_http_DBQuery extends AsyncTask<String, Void, JSONArray> {
     @Override
     protected JSONArray doInBackground(String... strings) {
 
         JSONArray json = new JSONArray();
+
+        Log.e("쿼리확인", strings[0]);
 
         try{
 
@@ -38,11 +47,6 @@ public class utility_http_DBQuery extends AsyncTask<String, Void, JSONArray> {
             PrintWriter writer = new PrintWriter(outStream);
             writer.write(buffer.toString());
             writer.flush();
-
-//            byte[] outputInBytes = strings[0].getBytes("UTF-8");
-//            OutputStream os = conn.getOutputStream();
-//            os.write(outputInBytes);
-//            os.close();
 
             int retCode = conn.getResponseCode();
 

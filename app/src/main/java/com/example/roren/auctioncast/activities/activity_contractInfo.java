@@ -15,8 +15,15 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 
+/**
+ *  이 액티비티는 사용자가 구매, 또는 판매한 상품에 대한 정보를  recyclerView 를 통해 보여준다.
+ */
+
 public class activity_contractInfo extends AppCompatActivity {
 
+    /**
+     *  recyclerView 와 adapter 변수 선언
+     */
     RecyclerView recyclerView_contractInfo;
 
     recyclerView_adapter_contractInfo recyclerView_adapter_contractInfo;
@@ -31,6 +38,12 @@ public class activity_contractInfo extends AppCompatActivity {
         set_recyclerView_contractInfo();
     }
 
+    /**
+     *  recyclerView 에 사용자의 거래정보를 세팅하는 method.
+     *
+     *  하나의 recyclerView 에 판매 내역과 구매 내역을 구분하여 넣기 위해서, recyclerView 에 item 을 삽입할 때
+     *  판매에 관한 item 을 먼저 모두 삽입한 뒤, 구매에 관한 item 을 삽입한다.
+     */
     public void set_recyclerView_contractInfo(){
         try {
 
@@ -39,7 +52,7 @@ public class activity_contractInfo extends AppCompatActivity {
             // recyclerView의 item을 담을 ArrayList
             ArrayList<recyclerView_item_contractInfo> items = new ArrayList<>();
 
-            // 판매 구분자 삽입
+            // 판매 구분자 삽입(아래의 item 들이 판매내역임을 보여준다)
             recyclerView_item_contractInfo item_sellFence = new recyclerView_item_contractInfo();
             item_sellFence.setSellFence("sellFence");
             items.add(item_sellFence);
@@ -63,7 +76,7 @@ public class activity_contractInfo extends AppCompatActivity {
                 items.add(item);
             }
 
-            // 구매 구분자 삽입
+            // 구매 구분자 삽입(아래의 item 들이 구매내역임을 보여준다)
             recyclerView_item_contractInfo item_buyFence = new recyclerView_item_contractInfo();
             item_buyFence.setBuyFence("buyFence");
             items.add(item_buyFence);

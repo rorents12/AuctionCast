@@ -1,5 +1,28 @@
 package com.example.roren.auctioncast.activities;
 
+/**
+ *  recyclerView_item_contractInfo 는 하나의 아이템이 구매정보, 판매정보, 구매구분자, 판매구분자에 대한 변수를 모두 가지고 있다.
+ *
+ *  1. 구매 구분자 변수
+ *  String buyFence --> 이 변수가 null 이 아니라면, adapter 는 구매 구분자를 item 에 setting 한다.
+ *
+ *  2. 판매 구분자 변수
+ *  String sellFence --> 이 변수가 null 이 아니라면, adapter 는 판매 구분자를 item 에 setting 한다.
+ *
+ *  3. 구매 정보 변수
+ *  String seller_id, buyPrice, buyProduct
+ *      위의 변수들은 구매 정보를 나타낼 때 사용된다.
+ *      seller_id 가 null 이 아니라면, adapter 는 구매 정보를 item 에 setting 한다.
+ *
+ *  4. 판매 정보 변수
+ *  String buyer_id, sellPrice, sellProduct
+ *      위의 변수들은 판매 정보를 나타낼 때 사용된다.
+ *      buyer_id 가 null 이 아니라면, adapter 는 판매 정보를 item 에 setting 한다.
+ *
+ *  5. 거래 고유번호
+ *  String contractNum --> 이 변수는 거래목록에서 해당 거래에 대한 송금처리를 할 때 사용된다.
+ */
+
 public class recyclerView_item_contractInfo {
     private String seller_id;
     private String sellPrice;

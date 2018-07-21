@@ -27,39 +27,60 @@ import java.util.ArrayList;
 import com.example.roren.auctioncast.R;
 
 /**
- * 방송 목록을 보여주는 list와 왼쪽에서 오른쪽으로 슬라이드 되는 Navigation View로 이루어진 Activity이다.
+ * 방송 목록을 보여주는 recyclerView 와 왼쪽에서 오른쪽으로 슬라이드 되는 Navigation View 로 이루어진 Activity 이다.
  *
  * Navigation View
  *      1. 현재 로그인된 사용자의 프로필 사진과 아이디를 상단에 보여준다.
  *      2. 방송하기 버튼을 통해 방송을 시작할 수 있다.
+ *      3. 옥션캐시 - 충전 버튼을 통해 옥션캐시를 충전할 수 있다.
+ *      4. 지갑 버튼을 통해 옥션코인의 정보를 확인할 수 있다.
+ *      5. 거래정보 버튼을 통해 자신의 거래내역을 확인할 수 있다.
  *
  * 방송 목록 list
- *      RecyclerView를 통해 list를 보여준다. 사용자는 http 통신을 통해 서버의 방송목록 정보를 받아오고, 해당 정보를 parsing하여
- *      RecyclerView에 세팅한다.
+ *      RecyclerView 를 통해 list 를 보여준다. 사용자는 http 통신을 통해 서버의 방송목록 정보를 받아오고, 해당 정보를 parsing 하여
+ *      RecyclerView 에 세팅한다.
  */
 
 public class activity_home extends AppCompatActivity implements View.OnClickListener {
 
-    // 액티비티를 구성하는 View들을 위한 변수 선언
-
+    /**
+     * activity 의 view 들을 위한 변수 선언
+     */
+    // 방송 시작 버튼
     Button button_start_broadcast;
+    // 옥션캐시 충전 버튼
     Button button_charge_cash;
-    Button button_charge_coin;
+    // 이더리움 지갑 버튼
+    Button button_auction_coin;
+    // 거래정보 조회 버튼
     Button button_contractInfo;
 
+    // 사용자 id 를 표시하기 위한 textView
     TextView textView_id;
+    // 사용자의 잔여 옥션캐시를 표시하기 위한 textView
     TextView textView_cash;
-    TextView textView_coin;
+    // 사용자의 신뢰도 점수를 표시하기 위한 textView
+    TextView textView_reliability;
 
+    // 사용자의 프로필 사진을 보여주는 imageView
     ImageView imageView_profile;
 
+    // 현재 진행중인 방속 목록을 보여주기 위한 recyclerView 와 그 adapter
     RecyclerView recyclerView_list_broadcasting;
-
     recyclerView_adapter_castList recyclerView_adapter_castList;
 
+    // 방송 목록을 swipe 를 통해 업데이트 하기 위한 swipeRefreshLayout. 이 layout 안에 방송 목록이 들어간다.
     SwipeRefreshLayout swipeRefreshLayout;
 
+    /**
+     *  액티비티 내에서 사용하기 위한 변수
+     */
+
+    // 옥션캐시 충전 시, 사용자가 충전할 금액을 선택하게 되는데, 사용자가 선택한 금액을 저장해두는 변수.
+    // 해당 변수에 금액을 저장해두었다가, activity_kakaopay 로 intent 를 넘겨줄 때 해당 변수를 같이 보내준다.
     private int total_amount;
+
+    // activity_home 의 context
     private Context context;
 
     @Override
@@ -71,17 +92,17 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
 
         button_start_broadcast = findViewById(R.id.activity_broadcasting_list_button_start_broadcast);
         button_charge_cash = findViewById(R.id.activity_broadcasting_list_button_chargeCash);
-        button_charge_coin = findViewById(R.id.activity_broadcasting_list_button_chargeCoin);
+        button_auction_coin = findViewById(R.id.activity_broadcasting_list_button_chargeCoin);
         button_contractInfo = findViewById(R.id.activity_broadcasting_list_button_contract_information);
 
         button_start_broadcast.setOnClickListener(this);
         button_charge_cash.setOnClickListener(this);
-        button_charge_coin.setOnClickListener(this);
+        button_auction_coin.setOnClickListener(this);
         button_contractInfo.setOnClickListener(this);
 
         textView_id = findViewById(R.id.activity_broadcasting_list_textView_id);
         textView_cash = findViewById(R.id.activity_broadcasting_list_textView_cash);
-        textView_coin = findViewById(R.id.activity_broadcasting_list_textView_coin);
+        textView_reliability = findViewById(R.id.activity_broadcasting_list_textView_reliability);
 
         textView_id.setText(activity_login.user_id);
 
@@ -89,8 +110,8 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
 
         recyclerView_list_broadcasting = findViewById(R.id.recyclerView_container_list_broadcasting);
 
-        // swipeRefreshLayout을 통해 위로 swipe 시 castList를 업데이트 하도록 함
 
+        // swipeRefreshLayout 을 통해 위로 swipe 시 방송목록을 업데이트 하도록 함
         swipeRefreshLayout = findViewById(R.id.activity_broadcasting_list_swipeRefreshLayout);
         swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
@@ -104,11 +125,15 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
         // 네비게이션 뷰의 회원개인정보를 세팅
         set_membership_info();
 
-        // castList를 위한 recyclerView 세팅
+        // 방송목록을 위한 recyclerView 세팅
         set_recyclerView_list_broadcasting();
 
     }
 
+    /**
+     * 다른 액티비티로 넘어갔다가 이 액티비티로 오거나, 잠시 다른 앱을 사용하다가 다시 해당 액티비티로 돌아왔을 경우,
+     * onResume callback method 를 통해 사용자의 개인정보와 방송목록을 업데이트하여 보여준다.
+     */
     @Override
     protected void onResume() {
         super.onResume();
@@ -116,6 +141,9 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
         set_recyclerView_list_broadcasting();
     }
 
+    /**
+     * activity 의 버튼들의 클릭 이벤트를 처리해주는 method
+     */
     @Override
     public void onClick(View view) {
         switch (view.getId()){
@@ -142,7 +170,6 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
                 final String[] items = new String[] {"5000", "10000", "50000", "100000"};
 
                 AlertDialog.Builder dialog = new AlertDialog.Builder(this);
-
                 dialog  .setTitle("충전할 금액을 선택하세요.")
                         .setSingleChoiceItems(
                                 items,
@@ -150,6 +177,7 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
                                 new DialogInterface.OnClickListener() {
                                     @Override
                                     public void onClick(DialogInterface dialogInterface, int i) {
+                                        // 선택한 금액을 total_amount 변수에 저장
                                         total_amount = i;
                                     }
                                 }
@@ -159,8 +187,8 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
                             public void onClick(DialogInterface dialogInterface, int i) {
                                 Intent intent = new Intent(context, activity_kakaopay.class);
 
+                                // 충전할 금액 정보를 intent 에 포함시켜 전송
                                 intent.putExtra("total_amount", items[total_amount]);
-
                                 startActivity(intent);
                             }
                         })
@@ -176,9 +204,10 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
                 break;
 
             /**
-             * 코인충전 버튼
+             * 지갑 버튼
              */
             case R.id.activity_broadcasting_list_button_chargeCoin:
+                // 지갑 정보 조회를 위해 activity_ethereum 으로 이동
                 Intent i = new Intent(context, activity_ethereum.class);
 
                 startActivity(i);
@@ -188,6 +217,7 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
              * 거래정보 버튼
              */
             case R.id.activity_broadcasting_list_button_contract_information:
+                // 거래 정보 조회를 위해 activity_contractInfo 로 이동
                 Intent intent2 = new Intent(context, activity_contractInfo.class);
 
                 startActivity(intent2);
@@ -196,7 +226,7 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
     }
 
     /**
-     * castList를 나타내기 위한 recyclerView를 세팅하는 메소드
+     * 방송목록 recyclerView 를 세팅하는 method
      */
     public void set_recyclerView_list_broadcasting(){
         try {
@@ -218,6 +248,7 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
                 item.setId_broadcaster(jsonObject.getString("broadcaster_id"));
                 item.setNum_viewer(jsonObject.getString("viewer_num"));
                 item.setTitle_broadcasting(jsonObject.getString("title"));
+                item.setIdentity_num(jsonObject.getString("identity_num"));
 
                 items.add(item);
             }
@@ -228,8 +259,6 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
             // 어댑터 설정
             recyclerView_list_broadcasting.setAdapter(recyclerView_adapter_castList);
 
-            Log.e("어댑터 아이템 확인: " , Integer.toString(recyclerView_adapter_castList.getItemCount()));
-
         } catch (Exception e) {
 
             e.printStackTrace();
@@ -239,40 +268,30 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
 
 
     /**
-     * 회원의 회원정보를 HTTP 통신을 통해 받아온 후 view에 세팅해주는 메소드
+     * 회원의 회원정보를 HTTP 통신을 통해 받아온 후 Navigation View 에 세팅해주는 메소드
      */
     public void set_membership_info(){
 
         try{
-            JSONArray json = new utility_http_DBQuery().execute("select * from table_user_membership where id='" + activity_login.user_id + "';").get();
-
+            // 자신의 회원정보 조회
+            JSONArray json = new utility_http_DBQuery()
+                    .execute("select * from table_user_membership where id='"
+                            + activity_login.user_id
+                            + "';")
+                    .get();
             JSONObject jsonObject = json.getJSONObject(0);
 
+            // 캐시 잔액 세팅
             textView_cash.setText(jsonObject.getString("cash") + " 원");
 
+            // 신뢰도 점수 세팅
+            textView_reliability.setText(jsonObject.getString("reliability"));
+
+            // 자신의 지갑주소를 global_variable 에 저장
             utility_global_variable.WALLET_ADDRESS = jsonObject.getString("wallet_path");
             utility_global_variable.WALLET_FILE_ADDRESS = jsonObject.getString("wallet_filepath");
         }catch (Exception e){
             e.printStackTrace();
         }
-
-        textView_coin.setVisibility(View.GONE);
-
-//        if(!utility_global_variable.WALLET_ADDRESS.equals("")){
-//            try{
-//                String coin = new utility_ether_connectToken(
-//                        utility_global_variable.CODE_ETHER_GET_BALANCE,
-//                        utility_global_variable.WALLET_ADDRESS,
-//                        utility_global_variable.WALLET_FILE_ADDRESS
-//                ).execute().get();
-//
-//                textView_coin.setText(coin + " 개");
-//            }catch (Exception e){
-//                e.printStackTrace();
-//            }
-//        }
-
-
-
     }
 }
