@@ -16,6 +16,8 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import com.example.roren.auctioncast.R;
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdView;
 
 /**
  * 로그인 액티비티.
@@ -35,7 +37,7 @@ public class activity_login extends AppCompatActivity implements View.OnClickLis
 
     SharedPreferences sharedPreferences_save_id;
 
-    static String user_id;
+    public static String user_id;
 
     // recyclerview adpater 등의 non-activity class에서 context를 사용할 일이 있을 때 사용하기 위해 글로벌 컨텍스트 하나를 선언한다.
     static Context global_context;
@@ -52,7 +54,10 @@ public class activity_login extends AppCompatActivity implements View.OnClickLis
                         Manifest.permission.INTERNET,
                         Manifest.permission.RECORD_AUDIO,
                         Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                        Manifest.permission.READ_EXTERNAL_STORAGE},
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_NETWORK_STATE},
                 1
         );
 

@@ -25,6 +25,8 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 
 import com.example.roren.auctioncast.R;
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdView;
 
 /**
  * 방송 목록을 보여주는 recyclerView 와 왼쪽에서 오른쪽으로 슬라이드 되는 Navigation View 로 이루어진 Activity 이다.
@@ -54,6 +56,8 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
     Button button_auction_coin;
     // 거래정보 조회 버튼
     Button button_contractInfo;
+    // 보물찾기 버튼
+    Button button_treasureHunt;
 
     // 사용자 id 를 표시하기 위한 textView
     TextView textView_id;
@@ -94,11 +98,13 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
         button_charge_cash = findViewById(R.id.activity_broadcasting_list_button_chargeCash);
         button_auction_coin = findViewById(R.id.activity_broadcasting_list_button_chargeCoin);
         button_contractInfo = findViewById(R.id.activity_broadcasting_list_button_contract_information);
+        button_treasureHunt = findViewById(R.id.activity_broadcasting_list_button_treasureHunt);
 
         button_start_broadcast.setOnClickListener(this);
         button_charge_cash.setOnClickListener(this);
         button_auction_coin.setOnClickListener(this);
         button_contractInfo.setOnClickListener(this);
+        button_treasureHunt.setOnClickListener(this);
 
         textView_id = findViewById(R.id.activity_broadcasting_list_textView_id);
         textView_cash = findViewById(R.id.activity_broadcasting_list_textView_cash);
@@ -221,6 +227,16 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
                 Intent intent2 = new Intent(context, activity_contractInfo.class);
 
                 startActivity(intent2);
+                break;
+
+            /**
+             * 보물찾기 버튼
+             */
+            case R.id.activity_broadcasting_list_button_treasureHunt:
+                // 보물찾기 activity 로 이동
+                Intent intent3 = new Intent(context, activity_AR_treasureHunt.class);
+
+                startActivity(intent3);
                 break;
         }
     }
