@@ -12,12 +12,26 @@ public class utility_global_variable {
     public static final int CODE_CHAT_START_AUCTION = 1004;
     public static final int CODE_CHAT_STOP_AUCTION = 1005;
     public static final int CODE_CHAT_PRICE_RAISE = 1007;
+    public static final int CODE_CHAT_START_PAINTING = 1008;
+    public static final int CODE_CHAT_STOP_PAINTING = 1009;
+
+    /**
+     * 그림그리기 서버에 메시지를 보낼 때, 메시지의 타입을 구분하기 위해 설정한 변수들
+     */
+    public static final int CODE_PAINT_START = 2000;
+    public static final int CODE_PAINT_PROGRESS = 2001;
+    public static final int CODE_PAINT_BEFORE_PROGRESS = 2002;
+    public static final int CODE_PAINT_UNDO = 2003;
+    public static final int CODE_PAINT_CLEAR = 2004;
+    public static final int CODE_PAINT_STOP = 2005;
 
     /**
      * netty 채팅 서버에 접속 할 때, 서버의 ip 주소와 port 번호
      */
-    public static final String HOST = System.getProperty("host", "52.41.99.92");
+//    public static final String HOST = System.getProperty("host", "52.41.99.92");
+    public static final String HOST = System.getProperty("host", "192.168.0.2");
     public static final int PORT = Integer.parseInt(System.getProperty("port", "5001"));
+    public static final int PORT_UDP = Integer.parseInt(System.getProperty("port_udp", "9999"));
 
     /**
      * Ethereum과 통신 시, 어떠한 메소드를 이용할 것인지 구분하기 위해 설정한 변수들

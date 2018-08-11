@@ -1,20 +1,13 @@
 package com.example.roren.auctioncast.activities;
 
-import android.Manifest;
-import android.animation.Animator;
-import android.animation.TimeInterpolator;
 import android.content.DialogInterface;
 import android.content.pm.ActivityInfo;
-import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.graphics.Color;
 import android.hardware.Camera;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
-import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
@@ -26,16 +19,19 @@ import android.view.View;
 import android.view.WindowManager;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
-import android.view.animation.AnimationSet;
-import android.view.animation.RotateAnimation;
 import android.view.animation.TranslateAnimation;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.roren.auctioncast.UDP_Painting.PaintingClient;
+import com.example.roren.auctioncast.UDP_Painting.PaintingDrawView_Publish;
+import com.example.roren.auctioncast.UDP_Painting.PaintingReceiver;
+import com.example.roren.auctioncast.UDP_Painting.Painting_sendMessageUtil;
 import com.example.roren.auctioncast.chatting.chatting_client_receiver;
 import com.example.roren.auctioncast.chatting.chatting_client_initializer;
 //import com.example.roren.auctioncast.chatting.chatting_messageCompressor;
@@ -52,24 +48,29 @@ import net.ossrs.yasea.SrsPublisher;
 import net.ossrs.yasea.SrsRecordHandler;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Random;
 
 import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
+import io.netty.util.CharsetUtil;
+
 import com.example.roren.auctioncast.R;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
-
-import static com.example.roren.auctioncast.utility.utility_global_variable.HOST;
 
 /**
  * 방송자가 방송을 시작할 수 있는 액티비티
@@ -178,6 +179,29 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
 
     private int priceNow;
 
+    /**
+     * 그림 그리기를 위한 변수
+     */
+    private PaintingDrawView_Publish paintingDrawView;
+    private Button btnPainting;
+    private Button btnChangeColor;
+    private Button btnEraser;
+    private Button btnUndo;
+    private Button btnClear;
+
+    private int colorNum;
+
+    private PaintingClient paintingClient;
+    private ChannelFuture paintingChannelFuture;
+
+    private Handler paintingHandler;
+    private PaintingReceiver paintingReceiver;
+    private Painting_sendMessageUtil painting_sendMessageUtil;
+
+    private InetSocketAddress UDP_server_address;
+
+    private LinearLayout linearLayout;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -185,7 +209,160 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
         setContentView(R.layout.activity_publishvideo);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR);
 
-        /////////////////////////////////////////////////////////////////////////////////////
+        /**
+         * 그림 그리기를 위한 세팅
+         */
+//        paintingDrawView = findViewById(R.id.paintingDrawView_publish);
+//        paintingDrawView.setVisibility(View.GONE);
+        linearLayout = findViewById(R.id.activity_broadcasting_LinearLayout);
+
+        paintingHandler = new Handler(){
+            @Override
+            public void handleMessage(Message msg) {
+                switch (msg.what){
+                    case 1:
+                        try{
+                            receive_painting(msg.obj.toString());
+                        }catch (Exception e){
+                            e.printStackTrace();
+                        }
+                }
+            }
+        };
+        paintingReceiver = new PaintingReceiver(paintingHandler);
+        painting_sendMessageUtil = new Painting_sendMessageUtil();
+
+        UDP_server_address = new InetSocketAddress(utility_global_variable.HOST, utility_global_variable.PORT_UDP);
+
+        btnPainting = findViewById(R.id.activity_broadcasting_button_painting);
+        btnChangeColor = findViewById(R.id.activity_broadcasting_button_colorChange);
+        btnEraser = findViewById(R.id.activity_broadcasting_button_eraser);
+        btnUndo = findViewById(R.id.activity_broadcasting_button_undo);
+        btnClear = findViewById(R.id.activity_broadcasting_button_clear);
+
+        btnPainting.setVisibility(View.GONE);
+        btnEraser.setVisibility(View.GONE);
+        btnChangeColor.setVisibility(View.GONE);
+        btnChangeColor.setBackgroundColor(Color.BLACK);
+        btnUndo.setVisibility(View.GONE);
+        btnClear.setVisibility(View.GONE);
+
+        colorNum = Color.BLACK;
+
+        // 그림그리기 버튼을 클릭하면 TCP 소켓을 이용해 채팅방에 있는 인원에게 그림그리기 시작 알림을 보낸다.
+        btnPainting.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(btnPainting.getText().toString().equals("그림그리기")) {
+                    try {
+                        btnPainting.setText("중단");
+                        chattingUtility.sendMessage(
+                                utility_global_variable.CODE_CHAT_START_PAINTING,
+                                channel,
+                                activity_login.user_id,
+                                "그림그리기 시작",
+                                roomCode
+                        );
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }else{
+                    //그림그리기 중단
+                    btnPainting.setText("그림그리기");
+                    try{
+                        chattingUtility.sendMessage(
+                                utility_global_variable.CODE_CHAT_STOP_PAINTING,
+                                channel,
+                                activity_login.user_id,
+                                "그림그리기 중단",
+                                roomCode
+                        );
+                    }catch (Exception e){
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
+
+        btnEraser.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                paintingDrawView.setLineColor(Color.TRANSPARENT);
+            }
+        });
+
+        btnChangeColor.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(paintingDrawView.getLineColor() == Color.TRANSPARENT){
+                    paintingDrawView.setLineColor(colorNum);
+                }else{
+                    switch (colorNum){
+                        case Color.BLACK:
+                            colorNum = Color.YELLOW;
+                            btnChangeColor.setBackgroundColor(colorNum);
+                            btnChangeColor.setTextColor(Color.BLACK);
+                            paintingDrawView.setLineColor(colorNum);
+                            break;
+                        case Color.YELLOW:
+                            colorNum = Color.RED;
+                            btnChangeColor.setBackgroundColor(colorNum);
+                            btnChangeColor.setTextColor(Color.BLACK);
+                            paintingDrawView.setLineColor(colorNum);
+                            break;
+                        case Color.RED:
+                            colorNum = Color.GREEN;
+                            btnChangeColor.setBackgroundColor(colorNum);
+                            btnChangeColor.setTextColor(Color.BLACK);
+                            paintingDrawView.setLineColor(colorNum);
+                            break;
+                        case Color.GREEN:
+                            colorNum = Color.BLUE;
+                            btnChangeColor.setBackgroundColor(colorNum);
+                            btnChangeColor.setTextColor(Color.BLACK);
+                            paintingDrawView.setLineColor(colorNum);
+                            break;
+
+                        case Color.BLUE:
+                            colorNum = Color.BLACK;
+                            btnChangeColor.setBackgroundColor(colorNum);
+                            btnChangeColor.setTextColor(Color.WHITE);
+                            paintingDrawView.setLineColor(colorNum);
+                            break;
+                    }
+                }
+            }
+        });
+
+        btnUndo.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                paintingDrawView.undo();
+                paintingDrawView.invalidate();
+                try{
+                    painting_sendMessageUtil.sendMessage(
+                            utility_global_variable.CODE_PAINT_UNDO, UDP_server_address, paintingClient, roomCode
+                    );
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        btnClear.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                paintingDrawView.clear();
+                paintingDrawView.invalidate();
+                try{
+                    painting_sendMessageUtil.sendMessage(
+                            utility_global_variable.CODE_PAINT_CLEAR, UDP_server_address, paintingClient, roomCode
+                    );
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
+            }
+        });
 
         /**
          * 경매 시스템을 위한 세팅
@@ -434,8 +611,9 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
 
                                 btnPublish.setText("stop");
 
-                                // 방송 시작 시 경매시작 버튼이 보이게 됨
+                                // 방송 시작 시 경매시작, 그림그리기 버튼이 보이게 됨
                                 btnStartAuction.setVisibility(View.VISIBLE);
+                                btnPainting.setVisibility(View.VISIBLE);
                             }
                         }
                     });
@@ -852,11 +1030,72 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
 
                 textView_priceNow.startAnimation(translateFromRight);
                 textView_bidder.startAnimation(translateFromLeft);
-
-
                 break;
-        }
 
+            case utility_global_variable.CODE_CHAT_START_PAINTING:
+                // 그림그리기 시작 신호가 왔을 때
+
+                // UDP 소켓에 연결
+                InetSocketAddress remoteAddress = new InetSocketAddress(utility_global_variable.HOST, utility_global_variable.PORT_UDP);
+
+                paintingClient = new PaintingClient(utility_global_variable.HOST, utility_global_variable.PORT_UDP, paintingReceiver);
+
+                try{
+                    paintingChannelFuture = paintingClient.start();
+                    painting_sendMessageUtil.sendMessage(utility_global_variable.CODE_PAINT_START, UDP_server_address, paintingClient, roomCode);
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
+
+                // 그림판 등장
+                if(linearLayout.getVisibility() == View.VISIBLE){
+                    paintingDrawView = new PaintingDrawView_Publish(this, paintingClient, UDP_server_address, roomCode);
+                    linearLayout.addView(paintingDrawView);
+                }else{
+                    linearLayout.setVisibility(View.VISIBLE);
+                }
+                btnChangeColor.setVisibility(View.VISIBLE);
+                btnEraser.setVisibility(View.VISIBLE);
+                btnUndo.setVisibility(View.VISIBLE);
+                btnClear.setVisibility(View.VISIBLE);
+                break;
+
+            case utility_global_variable.CODE_CHAT_STOP_PAINTING:
+                // 그림그리지 중단 신호가 왔을 때
+
+                // 그림판 안보이도록 처리
+                linearLayout.setVisibility(View.GONE);
+                btnChangeColor.setVisibility(View.GONE);
+                btnEraser.setVisibility(View.GONE);
+                btnUndo.setVisibility(View.GONE);
+                btnClear.setVisibility(View.GONE);
+                break;
+
+        }
     }
 
+    public void receive_painting(String string) {
+
+        try {
+            JSONObject json = new JSONObject(string);
+
+            int type = json.getInt("type");
+            float x1 = (float)json.getDouble("x1");
+            float y1 = (float)json.getDouble("y1");
+            float x2 = (float)json.getDouble("x2");
+            float y2 = (float)json.getDouble("y2");
+            int color = json.getInt("color");
+            String roomCode = json.getString("roomCode");
+
+
+            switch (type){
+                case utility_global_variable.CODE_PAINT_PROGRESS:
+                    break;
+
+            }
+
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
 }

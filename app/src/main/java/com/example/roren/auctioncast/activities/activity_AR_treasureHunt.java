@@ -84,6 +84,7 @@ public class activity_AR_treasureHunt extends AppCompatActivity {
             // mDrawView 에 사용자의 최초 위치 전달
             Location location = loccationManager.getLastKnownLocation(high.getName());
             mDrawView.setMyLocation(location.getLatitude(), location.getLongitude(), location.getAltitude());
+            Log.e("최초 위치", String.valueOf(location.getLatitude()) + ", " + String.valueOf(location.getLongitude()));
 
             // 위치감지 클래스에 위치변경 이벤트를 관리할 Listener 등록
             loccationManager.requestLocationUpdates(high.getName(), 10000, 10f, new LocationListener() {

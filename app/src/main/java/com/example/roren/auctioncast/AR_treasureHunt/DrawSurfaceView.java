@@ -221,7 +221,7 @@ public class DrawSurfaceView extends View {
 
     /**
      * 화면을 터치했을 때 해당 좌표와 현재 화면에 표시되고 있는 쿠폰의 좌표를 비교하여
-     * 100미터 이내에 있는 토큰을 터치했을 시 해당 쿠폰을 얻을 수 있도록 하는 메소드
+     * 100미터 이내에 있는 쿠폰을 터치했을 시 해당 쿠폰을 얻을 수 있도록 하는 메소드
      */
     @Override
     public boolean onTouchEvent(MotionEvent event) {
@@ -336,7 +336,7 @@ public class DrawSurfaceView extends View {
             // 사용자와 쿠폰 사이의 거리가 100미터 이내이면 해당 쿠폰의 타입에 따라
             // spot 변수에 광고모양의 Bitmap 과 보물상자 모양의 bitmap 을 저장한다.
             // 거리가 100미터 보다 크다면 하얀 점으로 표시한다.
-            if(dist < 300){
+            if(dist < 200){
                 switch (u.type){
                     default:
                         spot = BitmapFactory.decodeResource(getContext().getResources(), R.drawable.treasure);
@@ -352,18 +352,18 @@ public class DrawSurfaceView extends View {
             // 사용자가 향하고 있는 방향과 쿠폰의 위치 사이의 x축, y축 각도를 계산하여
             // 각각 angle, angleY 변수에 저장한다.
             double angle = bearing(me.latitude, me.longitude, u.latitude, u.longitude) - OFFSET;
-            double angleY = bearing(me.latitude, me.longitude, u.latitude, u.longitude) - OFFSET_Y;
+//            double angleY = bearing(me.latitude, me.longitude, u.latitude, u.longitude) - OFFSET_Y;
             double xPos, yPos;
 
             // 각도가 0 보다 작거나, 360 보다 크면 모두 360 도 내로 들어오도록 각도를 normalize 한다.
             if(angle < 0)
                 angle = (angle+360)%360;
-            if(angleY < 0)
-                angleY = (angleY+360)%360;
+//            if(angleY < 0)
+//                angleY = (angleY+360)%360;
             if(angle > 360)
                 angle = angle % 360;
-            if(angleY > 360)
-                angleY = angleY % 360;
+//            if(angleY > 360)
+//                angleY = angleY % 360;
 
             // 사용자의 화면에 쿠폰이 나타나기 위해서는 x축과 y축 각도가 0~45 도 또는 315~360도 사이의 값이어야 한다.
             // 그 밖의 값에 대해서는 화면에서 사라지지 않고 화면의 가장자리에 위치하도록 각도를 조절해준다.
@@ -372,20 +372,20 @@ public class DrawSurfaceView extends View {
             }else if(angle < 316 && angle >= 180){
                 angle = 316;
             }
-            if(angleY > 30 && angleY < 180){
-                angleY = 30;
-            }else if(angleY < 330 && angleY >= 180){
-                angleY = 330;
-            }
+//            if(angleY > 15 && angleY < 180){
+//                angleY = 15;
+//            }else if(angleY < 345 && angleY >= 180){
+//                angleY = 345;
+//            }
 
             // 실제 화면에서 쿠폰을 그려낼 위치를 screenWidth, screenHeight 를 이용하여 결정한다.
             double posInPx = angle * (screenWidth / 90d);
-            double posInPy = angleY * (screenHeight / 90d);
+//            double posInPy = angleY * (screenHeight / 90d);
 
             int spotCentreX = spot.getWidth() / 2;
             int spotCentreY = spot.getHeight() / 2;
             xPos = posInPx - spotCentreX;
-            yPos = posInPy - spotCentreY;
+//            yPos = posInPy - spotCentreY;
 
             if (angle <= 45)
                 u.x = (float) ((screenWidth / 2) + xPos);
@@ -394,12 +394,24 @@ public class DrawSurfaceView extends View {
             else
                 u.x = (float) (float)(screenWidth*9);
 
-            if (angleY <= 45)
-                u.y = (float) ((screenHeight / 2) + yPos);
-            else if(angleY >= 315)
-                u.y = (float) ((screenHeight / 2) - ((screenHeight*4) - yPos));
-            else
-                u.y = (float) (float)(screenHeight*9);
+//            if (angleY <= 45)
+//                u.y = (float) ((screenHeight / 2) + yPos);
+//            else if(angleY >= 315)
+//                u.y = (float) ((screenHeight / 2) - ((screenHeight*4) - yPos));
+//            else
+//                u.y = (float) (float)(screenHeight*9);
+
+            String s = String.valueOf(u.latitude).substring(7,8);
+            int a = Integer.parseInt(s);
+
+            if(a > 70){
+                a -= 30;
+            }else if(a < 30){
+                a += 30;
+            }
+
+            float b = ((float)a)/100;
+            u.y = (float) screenHeight*b;
 
             // 해당 위치에 spot 에 저장된 bitmap 을 그려낸다.
             canvas.drawBitmap(spot, u.x, u.y, mPaint);
@@ -407,7 +419,7 @@ public class DrawSurfaceView extends View {
             // 쿠폰과 사용자의 거리가 100미터 이내이면 해당 쿠폰의 좌표정보를 hashMap_touchLocation 에 저장하고,
             // 거리를 나타내는 Text 를 "터치!" 로 변경한다.
             // 거리가 100미터 보다 크다면 해당 거리를 Text 로 표시해준다.
-            if(dist < 300){
+            if(dist < 200){
                 canvas.drawText("터치!", u.x + (spot.getWidth()/4), u.y, mPaint);
                 ArrayList array = new ArrayList();
 

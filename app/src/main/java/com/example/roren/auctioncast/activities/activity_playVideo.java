@@ -1,6 +1,7 @@
 package com.example.roren.auctioncast.activities;
 
 import android.content.DialogInterface;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -10,6 +11,7 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.View;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
@@ -21,6 +23,11 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.roren.auctioncast.UDP_Painting.PaintingClient;
+import com.example.roren.auctioncast.UDP_Painting.PaintingDrawView_Play;
+import com.example.roren.auctioncast.UDP_Painting.PaintingDrawView_Publish;
+import com.example.roren.auctioncast.UDP_Painting.PaintingReceiver;
+import com.example.roren.auctioncast.UDP_Painting.Painting_sendMessageUtil;
 import com.example.roren.auctioncast.chatting.chatting_client_receiver;
 import com.example.roren.auctioncast.chatting.chatting_client_initializer;
 import com.example.roren.auctioncast.chatting.chatting_utility;
@@ -39,16 +46,23 @@ import com.google.android.exoplayer2.ui.PlayerView;
 import com.google.android.exoplayer2.upstream.BandwidthMeter;
 import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter;
 
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 
 import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
+import io.netty.util.CharsetUtil;
+
 import com.example.roren.auctioncast.R;
 
 import org.json.JSONObject;
@@ -140,10 +154,49 @@ public class activity_playVideo extends AppCompatActivity{
 
     private int priceNow;
 
+    /**
+     * 그림 그리기를 위한 변수 선언
+     */
+    private PaintingDrawView_Play paintingDrawView_play;
+
+    private PaintingClient paintingClient;
+    private ChannelFuture paintingChannelFuture;
+
+    private Handler paintingHandler;
+    private PaintingReceiver paintingReceiver;
+
+    private Painting_sendMessageUtil painting_sendMessageUtil;
+
+    private InetSocketAddress UDP_server_address;
+
+    private LinearLayout linearLayout;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_playvideo);
+
+        /**
+         * onCreate 내의 그림그리기 부분
+         */
+        linearLayout = findViewById(R.id.activity_player_LinearLayout);
+        painting_sendMessageUtil = new Painting_sendMessageUtil();
+        UDP_server_address = new InetSocketAddress(utility_global_variable.HOST, utility_global_variable.PORT_UDP);
+
+        paintingHandler = new Handler(){
+            @Override
+            public void handleMessage(Message msg) {
+                switch (msg.what){
+                    case 1:
+                        try{
+                            receive_painting(msg.obj.toString());
+                        }catch (Exception e){
+                            e.printStackTrace();
+                        }
+                }
+            }
+        };
+        paintingReceiver = new PaintingReceiver(paintingHandler);
 
         /**
          * onCreate 내의 채팅부분
@@ -500,6 +553,84 @@ public class activity_playVideo extends AppCompatActivity{
                 textView_bidder.startAnimation(translateFromLeft);
 
                 break;
+            case utility_global_variable.CODE_CHAT_START_PAINTING:
+                // 그림그리기 시작 신호가 왔을 때
+
+                // UDP 소켓에 연결
+
+                paintingClient = new PaintingClient(utility_global_variable.HOST, utility_global_variable.PORT_UDP, paintingReceiver);
+
+                try{
+                    paintingChannelFuture = paintingClient.start();
+                    painting_sendMessageUtil.sendMessage(utility_global_variable.CODE_PAINT_START, UDP_server_address, paintingClient, roomCode);
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
+
+                // 그림판 등장
+
+
+                // 그림판 등장
+                if(linearLayout.getVisibility() == View.VISIBLE){
+                    paintingDrawView_play = new PaintingDrawView_Play(this, paintingClient, UDP_server_address, roomCode);
+                    linearLayout.addView(paintingDrawView_play);
+                }else{
+                    linearLayout.setVisibility(View.VISIBLE);
+                }
+                break;
+
+            case utility_global_variable.CODE_CHAT_STOP_PAINTING:
+                // 그림그리지 중단 신호가 왔을 때
+
+                // 그림판 안보이도록 처리
+                linearLayout.setVisibility(View.GONE);
+                break;
         }
     }
+
+    public void receive_painting(String string){
+        try {
+            JSONObject json = new JSONObject(string);
+
+            int type = json.getInt("type");
+            String roomCode = json.getString("roomCode");
+
+
+            switch (type){
+                case utility_global_variable.CODE_PAINT_PROGRESS:
+                    Log.e("UDP LOG:", "그림그리는중...");
+                    float x1 = (float)json.getDouble("x1");
+                    float y1 = (float)json.getDouble("y1");
+                    float x2 = (float)json.getDouble("x2");
+                    float y2 = (float)json.getDouble("y2");
+                    int color = json.getInt("color");
+                    paintingDrawView_play.draw(color, x1, y1, x2, y2);
+                    paintingDrawView_play.invalidate();
+                    break;
+
+                case utility_global_variable.CODE_PAINT_BEFORE_PROGRESS:
+                    Log.e("UDP LOG:", "이전까지의 비트맵 진행상황 저장");
+                    paintingDrawView_play.savePainting();
+                    break;
+
+                case utility_global_variable.CODE_PAINT_UNDO:
+                    Log.e("UDP LOG:", "방금 그린 그림 취소");
+                    paintingDrawView_play.undo();
+                    paintingDrawView_play.invalidate();
+                    break;
+
+                case utility_global_variable.CODE_PAINT_CLEAR:
+                    Log.e("UDP LOG:", "모두 지우기");
+                    paintingDrawView_play.clear();
+                    paintingDrawView_play.invalidate();
+
+
+            }
+
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+
+
 }

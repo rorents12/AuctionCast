@@ -1,5 +1,6 @@
 package com.example.roren.auctioncast.chatting;
 
+import com.example.roren.auctioncast.UDP_Painting.PaintingClient;
 import com.example.roren.auctioncast.activities.activity_login;
 import com.example.roren.auctioncast.utility.utility_global_variable;
 

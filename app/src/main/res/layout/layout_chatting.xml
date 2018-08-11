@@ -2,14 +2,14 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/layout_chatting"
     android:layout_width="match_parent"
-    android:layout_height="250dp"
+    android:layout_height="200dp"
     android:layout_alignParentBottom="true"
     android:background="#AA000000">
 
     <android.support.v7.widget.RecyclerView
         android:id="@+id/recyclerView_container_broadcasting_chatting"
         android:layout_width="match_parent"
-        android:layout_height="200dp"
+        android:layout_height="150dp"
         android:background="@android:color/transparent"
         android:layout_alignParentTop="true"/>
 
