@@ -15,6 +15,9 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.request.RequestOptions;
 import com.example.roren.auctioncast.utility.utility_ether_connectToken;
 import com.example.roren.auctioncast.utility.utility_global_variable;
 import com.example.roren.auctioncast.utility.utility_http_DBQuery;
@@ -113,6 +116,7 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
         textView_id.setText(activity_login.user_id);
 
         imageView_profile = findViewById(R.id.activity_broadcasting_list_imageView_profile);
+        imageView_profile.setOnClickListener(this);
 
         recyclerView_list_broadcasting = findViewById(R.id.recyclerView_container_list_broadcasting);
 
@@ -238,6 +242,16 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
 
                 startActivity(intent3);
                 break;
+
+            /**
+             * 프로필사진 터치 시 이벤트(프로필사진 변경)
+             */
+            case R.id.activity_broadcasting_list_imageView_profile:
+                // 프로필사진 촬영 activity 로 이동
+                Intent intent4 = new Intent(context, activity_faceDetection.class);
+
+                startActivity(intent4);
+                break;
         }
     }
 
@@ -287,7 +301,6 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
      * 회원의 회원정보를 HTTP 통신을 통해 받아온 후 Navigation View 에 세팅해주는 메소드
      */
     public void set_membership_info(){
-
         try{
             // 자신의 회원정보 조회
             JSONArray json = new utility_http_DBQuery()
@@ -296,6 +309,27 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
                             + "';")
                     .get();
             JSONObject jsonObject = json.getJSONObject(0);
+
+            // 프로필 사진 세팅
+            RequestOptions profileOptions = new RequestOptions()
+                    .circleCropTransform()
+                    .diskCacheStrategy(DiskCacheStrategy.NONE)
+                    .skipMemoryCache(true);
+
+            if(!jsonObject.getString("profile_path").equals("null")){
+                utility_global_variable.PROFILE_IMAGE_PATH = jsonObject.getString("profile_path");
+                Glide
+                        .with(this)
+                        .load(jsonObject.getString("profile_path"))
+                        .apply(profileOptions)
+                        .into(imageView_profile);
+            }else{
+                Glide
+                        .with(this)
+                        .load(utility_global_variable.PROFILE_DEFAULT_IMAGE_PATH)
+                        .apply(profileOptions)
+                        .into(imageView_profile);
+            }
 
             // 캐시 잔액 세팅
             textView_cash.setText(jsonObject.getString("cash") + " 원");

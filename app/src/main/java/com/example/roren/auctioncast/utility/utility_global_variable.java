@@ -1,5 +1,7 @@
 package com.example.roren.auctioncast.utility;
 
+import android.graphics.Bitmap;
+
 public class utility_global_variable {
 
     /**
@@ -28,8 +30,8 @@ public class utility_global_variable {
     /**
      * netty 채팅 서버에 접속 할 때, 서버의 ip 주소와 port 번호
      */
-//    public static final String HOST = System.getProperty("host", "52.41.99.92");
-    public static final String HOST = System.getProperty("host", "192.168.0.2");
+    public static final String HOST = System.getProperty("host", "52.41.99.92");
+//    public static final String HOST = System.getProperty("host", "192.168.0.2");
     public static final int PORT = Integer.parseInt(System.getProperty("port", "5001"));
     public static final int PORT_UDP = Integer.parseInt(System.getProperty("port_udp", "9999"));
 
@@ -46,4 +48,27 @@ public class utility_global_variable {
     public static final String AUCTION_COIN_ADDRESS = "0x0970128d2A78906DdCEEA803290C90e9B4590F9b";
     public static String WALLET_ADDRESS;
     public static String WALLET_FILE_ADDRESS;
+
+    /**
+     * 얼굴인식 AR 카메라 마스크 인덱스
+     */
+    public static int AR_CAMERA_MASK_INDEX_DEFAULT = 10001;
+    public static final int AR_CAMERA_MASK_INDEX_PICA = 10001;
+    public static final int AR_CAMERA_MASK_INDEX_EVEE = 10002;
+    public static final int AR_CAMERA_MASK_INDEX_NAON = 10003;
+    public static final int AR_CAMERA_MASK_INDEX_THOR = 10004;
+    public static final int AR_CAMERA_MASK_INDEX_MASK = 10005;
+
+    /**
+     * 프로필사진의 서버 URL 을 저장할 변수
+     */
+    public static String PROFILE_IMAGE_PATH = "";
+    public static final String PROFILE_DEFAULT_IMAGE_PATH = "http://52.41.99.92/user-profile-images/profile.jpg";
+
+    /**
+     * Google Cloud Vision API KEY
+     */
+    public static final String GOOGLE_CLOUD_VISION_API_KEY = "AIzaSyAyuTdts3HlRvIB7YT-NKu6rGuDn8F5K6o";
+
+    public static Bitmap bitmap_capture;
 }

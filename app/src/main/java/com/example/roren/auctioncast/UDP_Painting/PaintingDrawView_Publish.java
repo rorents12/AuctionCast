@@ -27,62 +27,70 @@ import java.util.ArrayList;
 
 public class PaintingDrawView_Publish extends View
 {
-    //현재 그리기 조건(색상, 굵기, 등등.)을 기억 하는 변수.
+    // 현재 그리기 조건을 기억 하는 변수
     private Paint paint = null;
     private Paint paint_eraser = null;
 
-    //그리기를 할 bitmap 객체. -- 도화지라고 생각하면됨.
+    // 그림을 그려낼 bitmap 클래스
     private Bitmap bitmap = null;
+    // 실행취소 기능을 위해 새로운 그림을 그리기 전 이전의 bitmap 을 저장할 bitmap
     private Bitmap bitmap_previous = null;
+    // 실행취소 기능을 위해 이전의 bitmap 들을 저장할 Stack. 최대 20개의 bitmap 을 저장할 수 있다.
     private utility_Bitmap_Stack history;
 
-    //bitmap 객체의 canvas 객체. 실제로 그리기를 하기 위한 객체.. -- 붓이라고 생각하면됨.
+    // bitmap 에 그림을 그릴 canvas 클래스
     private Canvas canvas = null;
 
-    //마우스 포인터(손가락)이 이동하는 경로 객체.
+    // 그림을 그릴 경로를 저장할 path 클래스
     private Path path;
 
-    //마우스 포인터(손가락)이 가장 마지막에 위치한 x좌표값 기억용 변수.
+    // 마우스 포인터(손가락)이 가장 마지막에 위치한 x좌표값 기억용 변수.
     private float   oldX;
-
-    //마우스 포인터(손가락)이 가장 마지막에 위치한 y좌표값 기억용 변수.
+    // 마우스 포인터(손가락)이 가장 마지막에 위치한 y좌표값 기억용 변수.
     private float   oldY;
 
-    //지우개 선택여부
-    private boolean bool_eraser = false;
 
+    // UDP 서버로의 소켓연결 역할을 하는 client
     private PaintingClient client;
+    // UDP 서버의 주소
     private InetSocketAddress address;
+    // 현재 사용자가 속한 UDP 서버 방의 roomCode
     private String roomCode;
+    // UDP 서버로 메시지를 보낼 때 사용하는 util 클래스
     private Painting_sendMessageUtil sendMessageUtil;
 
+    // 현재 사용자 기기 스크린의 가로 길이와 세로 길이를 저장할 변수
     private float height;
     private float width;
 
+    // 지우개 기능을 사용하기 위해 정의한 Xfermode 클래스
     PorterDuffXfermode clear = new PorterDuffXfermode(PorterDuff.Mode.CLEAR);
 
     public PaintingDrawView_Publish(Context context, PaintingClient client, InetSocketAddress address, String roomCode){
-//        super(context, set);
         this(context);
         this.client = client;
         this.address = address;
         this.roomCode = roomCode;
 
+        // 사용자 기기의 가로 길이와 세로 길이를 받아와 저장
         DisplayMetrics dm = getContext().getResources().getDisplayMetrics();
         width = dm.widthPixels;
         height = dm.heightPixels;
 
+        // sendMessageUtil 클래스 초기화
         sendMessageUtil = new Painting_sendMessageUtil();
 
-        //그리기를 할 bitmap 객체 생성.
+        // 그리기를 할 bitmap 객체 생성.
         bitmap = Bitmap.createBitmap((int)width, (int)height, Bitmap.Config.ARGB_8888);
+
+        // 실행취소 기능을 위한 변수들의 초기화
         bitmap_previous = Bitmap.createBitmap((int)width, (int)height, Bitmap.Config.ARGB_8888);
         history = new utility_Bitmap_Stack();
 
-        //그리기 bitmap에서 canvas를 알아옴.
+        // 그리기 bitmap 에서 canvas 를 받아와 저장
         canvas = new Canvas(bitmap);
 
-        //그림을 그리기 위한 펜의 Paint 객체 설정
+        // 그림을 그리기 위한 펜의 Paint 객체 설정
         paint = new Paint();
         paint.setColor(Color.BLACK);
 
@@ -96,7 +104,7 @@ public class PaintingDrawView_Publish extends View
         paint.setStrokeCap(Paint.Cap.ROUND);
         paint.setAntiAlias(true);
 
-        //그림을 지우기 위한 지우개의 Paint 객체 설정
+        // 그림을 지우기 위한 지우개의 Paint 객체 설정
         paint_eraser = new Paint();
         paint_eraser.setColor(Color.TRANSPARENT);
 
@@ -114,28 +122,33 @@ public class PaintingDrawView_Publish extends View
         path = new Path();
     }
 
-    @Override
-    protected void onDetachedFromWindow()
-    {
-        //앱 종료시 그리기 bitmap 초기화 시킴...
-        if(bitmap!= null) bitmap.recycle();
-        bitmap = null;
+//    @Override
+//    protected void onDetachedFromWindow()
+//    {
+//        //앱 종료시 그리기 bitmap 초기화 시킴...
+//        if(bitmap!= null) bitmap.recycle();
+//        bitmap = null;
+//
+//        super.onDetachedFromWindow();
+//    }
 
-        super.onDetachedFromWindow();
-    }
-
+    /**
+     *  invalidate() 함수가 호출되면 아래의 함수가 자동으로 호출된다.
+     *  그림을 그려낸 bitmap 자체를 현재의 view 에 그려주는 역할을 한다.
+     */
     @Override
-    public void onDraw(Canvas canvas)
-    {
-        //그리기 bitmap이 있으면 현재 화면에 bitmap을 그린다.
-        //자바의 view는 onDraw할때 마다 화면을 싹 지우고 다시 그리게 됨.
+    public void onDraw(Canvas canvas) {
         if(bitmap != null)
         {
+            // bitmap 을 현재의 view 에 그려낸다.
             canvas.drawBitmap(bitmap, 0, 0, null);
         }
+
+        // 그림을 그리는 사용자가 사용하는 색상을 체크하고,
+        // 펜을 사용하고 있다면 펜 아이콘을,
+        // 지우개를 사용하고 있다면 지우개 아이콘을 띄워준다.
         if( oldX != 0 && oldY != 0){
             Bitmap b;
-
             if(paint.getColor() == Color.TRANSPARENT){
                 b = BitmapFactory.decodeResource(getContext().getResources(), R.drawable.eraser);
                 canvas.drawBitmap(b, oldX - (b.getWidth()/4), oldY - b.getWidth() + (b.getWidth()/4), paint_eraser);
@@ -147,22 +160,28 @@ public class PaintingDrawView_Publish extends View
     }
 
 
-    //이벤트 처리용 함수..
+    /**
+     *  사용자가 그림을 그리기 위하여 터치를 할 때, 해당 터치 이벤트를 감지해 상황에 따른 처리를 하는 eventListener
+     */
     @Override
     public boolean onTouchEvent(MotionEvent event)
     {
 
+        // 사용자가 터치한 좌표 저장
         float x = event.getX();
         float y = event.getY();
 
         switch (event.getAction() & MotionEvent.ACTION_MASK)
         {
+            // 사용자가 처음 화면에 손을 댔을 때
             case MotionEvent.ACTION_DOWN:
             {
+
+                // 현재의 비트맵 정보를 history 에 저장
                 bitmap_previous = Bitmap.createBitmap(bitmap);
                 history.push(bitmap_previous);
 
-                // 패킷 누락에 대비해 메시지를 2번 보냄
+                // 그림 그리기를 시작한다는 메시지를 UDP 서버로 전송
                 try {
                     sendMessageUtil.sendMessage(
                             utility_global_variable.CODE_PAINT_BEFORE_PROGRESS, address, client, roomCode
@@ -171,41 +190,43 @@ public class PaintingDrawView_Publish extends View
                     e.printStackTrace();
                 }
 
-                //최초 마우스를 눌렀을때(손가락을 댓을때) 경로를 초기화 시킨다.
+                // 경로 초기화
                 path.reset();
 
-                //그다음.. 현재 경로로 경로를 이동 시킨다.
+                // 해당 포인트로 path 시작점 이동
                 path.moveTo(x, y);
 
-                //포인터 위치값을 기억한다.
+                // 시작점 좌표값 저장
                 oldX = x;
                 oldY = y;
 
                 invalidate();
 
-                //계속 이벤트 처리를 하겠다는 의미.
                 return true;
             }
             case MotionEvent.ACTION_MOVE:
             {
 
-                //포인트가 이동될때 마다 두 좌표(이전에눌렀던 좌표와 현재 이동한 좌료)간의 간격을 구한다.
+                // 포인트가 이동될때 마다 두 좌표간의 간격을 구한다.
                 float dx = Math.abs(x - oldX);
                 float dy = Math.abs(y - oldY);
 
-                //두 좌표간의 간격이 4px이상이면 (가로든, 세로든) 그리기 bitmap에 선을 그린다.
+                // 두 좌표간의 간격이 4px 이상이면 bitmap 에 선을 그린다.
                 if (dx >= 4 || dy >= 4)
                 {
-                    //path에 좌표의 이동 상황을 넣는다. 이전 좌표에서 신규 좌표로..
-                    //lineTo를 쓸수 있지만.. 좀더 부드럽게 보이기 위해서 quadTo를 사용함.
+                    // 시작점과 도착점을 연결
                     path.quadTo(oldX, oldY, x, y);
 
+                    // 시작점과 도착점의 정보를 UDP 서버로 전송
                     try{
+
+                        // 현재 사용자의 기기를 기준으로 좌표값을 normalize
                         float x1 = oldX/width;
                         float y1 = oldY/height;
                         float x2 = x/width;
                         float y2 = y/height;
 
+                        // 메시지 전송
                         sendMessageUtil.sendMessage(
                                 utility_global_variable.CODE_PAINT_PROGRESS, address, client,
                                 x1, y1, x2, y2, paint.getColor(), roomCode
@@ -216,18 +237,16 @@ public class PaintingDrawView_Publish extends View
 
 
 
-                    //포인터의 마지막 위치값을 기억한다.
+                    // 포인터의 마지막 위치값 저장
                     oldX = x;
                     oldY = y;
 
-                    //그리기 bitmap에 path를 따라서 선을 그린다.
+                    // bitmap 에 path 를 따라 그림을 그려낸다
                     canvas.drawPath(path, paint);
                 }
 
-                //화면을 갱신시킴.. 이 함수가 호출 되면 onDraw 함수가 실행됨.
                 invalidate();
 
-                //계속 이벤트 처리를 하겠다는 의미.
                 return true;
             }
             case MotionEvent.ACTION_UP:
@@ -238,21 +257,18 @@ public class PaintingDrawView_Publish extends View
                 return false;
         }
 
-        //더이상 이벤트 처리를 하지 않겠다는 의미.
         return false;
     }
 
     /**
-     * 펜 색상 세팅
+     * 펜 색상, 굵기, 모양 세팅
      * @param color 색상
      */
     public void setLineColor(int color)
     {
         paint = new Paint();
         paint.setColor(color);
-
         paint.setXfermode(null);
-
         paint.setAlpha(255);
         paint.setDither(true);
         paint.setStrokeWidth(10);
@@ -261,6 +277,8 @@ public class PaintingDrawView_Publish extends View
         paint.setStrokeCap(Paint.Cap.ROUND);
         paint.setAntiAlias(true);
 
+        // color 값이 TRANSPARENT 일 경우, 지우개를 사용해야 하므로 StrokeWidth 를 늘리고
+        // Xfermode 를 clear 로 설정한다
         if(color == Color.TRANSPARENT){
             paint.setXfermode(clear);
             paint.setStrokeWidth(80);
@@ -268,10 +286,17 @@ public class PaintingDrawView_Publish extends View
         }
     }
 
+    /**
+     *  현재 사용자가 사용하고 있는 색상의 번호를 반환하는 메소드
+     */
     public int getLineColor(){
         return paint.getColor();
     }
 
+    /**
+     *  history 에서 가장 최근의 bitmap 을 불러와 그림을 그릴 bitmap 으로 설정하는 메소드
+     *  가장 최근에 실행된 그림그리기를 취소 할 수 있다.
+     */
     public void undo(){
         try {
             bitmap = Bitmap.createBitmap(history.pop());
@@ -281,8 +306,13 @@ public class PaintingDrawView_Publish extends View
         }
     }
 
+    /**
+     *  현재 bitmap 에 그려진 그림을 모두 지우는 메소드
+     */
     public void clear(){
-        history.clear();
+        bitmap_previous = Bitmap.createBitmap(bitmap);
+        history.push(bitmap_previous);
+
         bitmap = Bitmap.createBitmap((int)width, (int)height, Bitmap.Config.ARGB_8888);
         canvas = new Canvas(bitmap);
     }

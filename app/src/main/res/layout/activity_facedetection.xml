@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/topLayout"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:keepScreenOn="true"
+    android:background="#eeed">
+
+    <com.example.roren.auctioncast.FaceDetection.CameraSourcePreview
+        android:id="@+id/preview"
+        android:layout_width="match_parent"
+        android:layout_height="550dp"
+        android:layout_alignParentTop="true">
+
+        <com.example.roren.auctioncast.FaceDetection.GraphicOverlay
+            android:id="@+id/faceOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+    </com.example.roren.auctioncast.FaceDetection.CameraSourcePreview>
+
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="550dp"
+        android:id="@+id/facedetect_image"
+        android:src="@drawable/profile"
+        android:visibility="gone"
+        android:layout_alignParentTop="true"/>
+
+    <android.support.v4.widget.NestedScrollView
+        android:layout_width="fill_parent"
+        android:layout_height="100dp"
+        android:layout_alignParentBottom="true"
+        android:layout_toLeftOf="@id/activity_faceDetection_button_photo"
+        >
+
+        <LinearLayout
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="fill_parent"
+                android:layout_height="70dp"
+                android:orientation="horizontal">
+                <ImageView
+                    android:id="@+id/activity_faceDetection_imageView_pica"
+                    android:layout_width="60dp"
+                    android:layout_height="60dp"
+                    android:src="@drawable/pica"
+                    android:layout_marginLeft="10dp"/>
+                <ImageView
+                    android:id="@+id/activity_faceDetection_imageView_evee"
+                    android:layout_width="60dp"
+                    android:layout_height="60dp"
+                    android:src="@drawable/evee"
+                    android:layout_marginLeft="10dp"/>
+                <ImageView
+                    android:id="@+id/activity_faceDetection_imageView_naon"
+                    android:layout_width="60dp"
+                    android:layout_height="60dp"
+                    android:src="@drawable/naon"
+                    android:layout_marginLeft="10dp"/>
+                <ImageView
+                    android:id="@+id/activity_faceDetection_imageView_thor"
+                    android:layout_width="60dp"
+                    android:layout_height="60dp"
+                    android:src="@drawable/thor"
+                    android:layout_marginLeft="10dp"/>
+            </LinearLayout>
+            <LinearLayout
+                android:layout_width="fill_parent"
+                android:layout_height="70dp"
+                android:orientation="horizontal">
+                <ImageView
+                    android:id="@+id/activity_faceDetection_imageView_mask"
+                    android:layout_width="60dp"
+                    android:layout_height="60dp"
+                    android:src="@drawable/mask"
+                    android:layout_marginLeft="10dp"/>
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </android.support.v4.widget.NestedScrollView>
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/activity_faceDetection_button_photo"
+        android:text="촬영"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"/>
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/activity_faceDetection_button_confirm"
+        android:text="확인"
+        android:layout_above="@id/activity_faceDetection_button_photo"
+        android:layout_alignParentRight="true"
+        android:visibility="gone"/>
+
+</RelativeLayout>

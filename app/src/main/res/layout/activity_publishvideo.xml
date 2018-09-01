@@ -72,19 +72,20 @@
     <Button
         android:layout_width="50dp"
         android:layout_height="wrap_content"
-        android:text="취소"
+        android:text="CLEAR"
         android:background="#cccccc"
-        android:id="@+id/activity_broadcasting_button_undo"
+        android:id="@+id/activity_broadcasting_button_clear"
         android:layout_below="@id/activity_broadcasting_button_eraser"
         android:layout_alignParentRight="true"/>
     <Button
         android:layout_width="50dp"
         android:layout_height="wrap_content"
-        android:text="CLEAR"
+        android:text="취소"
         android:background="#cccccc"
-        android:id="@+id/activity_broadcasting_button_clear"
-        android:layout_below="@id/activity_broadcasting_button_undo"
+        android:id="@+id/activity_broadcasting_button_undo"
+        android:layout_below="@id/activity_broadcasting_button_clear"
         android:layout_alignParentRight="true"/>
+
 
     <Button
         android:layout_width="wrap_content"

@@ -144,31 +144,52 @@ public class activity_playVideo extends AppCompatActivity{
      * 경매 시스템을 위한 변수 선언
      */
 
+    // 입찰 버튼
     private Button btnBid;
+
+    // 호가를 1000원 올릴 수 있는 호가 조정 버튼
     private ImageButton btnBidUp;
+    // 호가를 1000원 내릴 수 있는 호가 조정 버튼
     private ImageButton btnBidDown;
+
+    // 현재 입찰가를 나타내는 텍스트뷰
     private TextView textView_priceNow;
+    // 현재 입찰자를 나타내는 텍스트뷰
     private TextView textView_bidder;
+    // 현재 사용자가 입찰할 호가를 나타내는 텍스트뷰
     private TextView textView_priceBid;
+
+    // 경매 UI 를 담고있는 linearLayout. 경매가 시작되면 Visibility 를 VISIBLE 로 변경하여 화면에 나타낸다
     private LinearLayout layout_auction;
 
+    // 현재 입찰가를 저장하는 변수. 사용자가 입찰 버튼을 눌렀을 때, 사용자가 결정한 호가가 현재 입찰가보다
+    // 작은지 큰지를 비교할 때 사용한다.
     private int priceNow;
 
     /**
      * 그림 그리기를 위한 변수 선언
      */
+
+    // 그림을 그릴 수 있는 뷰 클래스. 그림을 그리기 위한 여러 메소드들이 정의되어 있다.
     private PaintingDrawView_Play paintingDrawView_play;
 
+    // 서버와 UDP 통신을 하기 위한 UDP client 클래스
     private PaintingClient paintingClient;
     private ChannelFuture paintingChannelFuture;
 
+    // 서버로부터 온 UDP 패킷을 받아 처리하는 Receiver 클래스와 해당 패킷의 종류에 따라
+    // paintingDrawView_play 와 상호작용하는 handler 클래스
     private Handler paintingHandler;
     private PaintingReceiver paintingReceiver;
 
+    // UDP 통신을 위해 여러 parameter 를 받아 json 객체로 만들고, 해당 객체를 String 형태로
+    // UDP 서버로 보내주는 역할을 하는 클래스
     private Painting_sendMessageUtil painting_sendMessageUtil;
 
+    // UDP 서버의 주소 정보를 저장하는 클래스
     private InetSocketAddress UDP_server_address;
 
+    // PaintingDrawView_Play 뷰 클래스를 위치시킬 linearLayout.
     private LinearLayout linearLayout;
 
     @Override
@@ -179,10 +200,18 @@ public class activity_playVideo extends AppCompatActivity{
         /**
          * onCreate 내의 그림그리기 부분
          */
+
+        // PaintingDrawView_Play 뷰 클래스를 위치시킬 linearLayout 을 선언한다.
         linearLayout = findViewById(R.id.activity_player_LinearLayout);
+
+        // painting_sendMessageUtil 클래스 초기화
         painting_sendMessageUtil = new Painting_sendMessageUtil();
+
+        // UDP 서버의 주소 정보를 저장
         UDP_server_address = new InetSocketAddress(utility_global_variable.HOST, utility_global_variable.PORT_UDP);
 
+        // UDP 서버로부터 온 정보를 처리하는 핸들러. receive_painting 메소드를 이용하여 메시지를 파싱하여
+        // 상황에 맞게 처리한다.
         paintingHandler = new Handler(){
             @Override
             public void handleMessage(Message msg) {
@@ -196,6 +225,8 @@ public class activity_playVideo extends AppCompatActivity{
                 }
             }
         };
+
+        // UDP 서버로부터 온 패킷을 처리하는 리시버
         paintingReceiver = new PaintingReceiver(paintingHandler);
 
         /**
@@ -557,48 +588,60 @@ public class activity_playVideo extends AppCompatActivity{
                 // 그림그리기 시작 신호가 왔을 때
 
                 // UDP 소켓에 연결
-
                 paintingClient = new PaintingClient(utility_global_variable.HOST, utility_global_variable.PORT_UDP, paintingReceiver);
 
                 try{
                     paintingChannelFuture = paintingClient.start();
+
+                    // UDP 서버에 그림그리기가 시작됨을 알림
                     painting_sendMessageUtil.sendMessage(utility_global_variable.CODE_PAINT_START, UDP_server_address, paintingClient, roomCode);
                 }catch (Exception e){
                     e.printStackTrace();
                 }
 
-                // 그림판 등장
-
-
-                // 그림판 등장
+                // 그림판 UI 들의 Visibility 를 VISIBLE 로 변경
                 if(linearLayout.getVisibility() == View.VISIBLE){
+
+                    // 방송 도중 최초로 그림 그리기를 시작하면, linearLayout 의 Visibility 가 VISIBLE 상태이므로,
+                    // 아래의 코드는 방송 도중 최초로 그림그리기를 시작했을 때 실행된다.
+                    // paintingDrawView_Play 클래스를 생성하고, linearLayout 에 addView 를 통해 삽입한다.
                     paintingDrawView_play = new PaintingDrawView_Play(this, paintingClient, UDP_server_address, roomCode);
                     linearLayout.addView(paintingDrawView_play);
                 }else{
+
+                    // 그림 그리기를 중단했다가 다시 활성화 했을 경우, linearLayout 의 Visibility 값만 VISIBLE 로 변경해준다.
                     linearLayout.setVisibility(View.VISIBLE);
                 }
                 break;
 
             case utility_global_variable.CODE_CHAT_STOP_PAINTING:
-                // 그림그리지 중단 신호가 왔을 때
 
-                // 그림판 안보이도록 처리
+                // 그림그리기 중단 신호가 왔을 때
+                // 그림 그리기 UI 의 Visibility 를 GONE 으로 처리한다.
                 linearLayout.setVisibility(View.GONE);
                 break;
         }
     }
 
+    /**
+     * UDP 서버로부터 온 json 메시지를 파싱하여 상황에 맞게 처리하는 메소드
+     */
     public void receive_painting(String string){
         try {
+
+            // JSONObject 파싱하기
             JSONObject json = new JSONObject(string);
 
             int type = json.getInt("type");
             String roomCode = json.getString("roomCode");
 
-
+            // 메시지의 타입에 따라 어떤 처리를 할것인지 결정한다.
             switch (type){
+
+                // 메시지타입 - CODE_PAINT_PROGRESS
+                // 시작점과 도착점의 x,y 좌표값과 color 값을 받아 paintingDrawView_play 의 draw 메소드에
+                // 전달하여 그림을 그리도록 한다.
                 case utility_global_variable.CODE_PAINT_PROGRESS:
-                    Log.e("UDP LOG:", "그림그리는중...");
                     float x1 = (float)json.getDouble("x1");
                     float y1 = (float)json.getDouble("y1");
                     float x2 = (float)json.getDouble("x2");
@@ -608,19 +651,23 @@ public class activity_playVideo extends AppCompatActivity{
                     paintingDrawView_play.invalidate();
                     break;
 
+                // 메시지 타입 - CODE_PAINT_BEFORE_PROGRESS
+                // 실행취소 기능을 위하여 paintingDrawView_play 의 savePainting 메소드를 호출한다.
+                // 현재의 그림을 저장한다.
                 case utility_global_variable.CODE_PAINT_BEFORE_PROGRESS:
-                    Log.e("UDP LOG:", "이전까지의 비트맵 진행상황 저장");
                     paintingDrawView_play.savePainting();
                     break;
 
+                // 메시지 타입 - CODE_PAINT_UNDO
+                // 실행취소 기능을 실행한다.
                 case utility_global_variable.CODE_PAINT_UNDO:
-                    Log.e("UDP LOG:", "방금 그린 그림 취소");
                     paintingDrawView_play.undo();
                     paintingDrawView_play.invalidate();
                     break;
 
+                // 메시지 타입 - CODE_PAINT_CLEAR
+                // 모두 지우기 기능을 실행한다.
                 case utility_global_variable.CODE_PAINT_CLEAR:
-                    Log.e("UDP LOG:", "모두 지우기");
                     paintingDrawView_play.clear();
                     paintingDrawView_play.invalidate();
 

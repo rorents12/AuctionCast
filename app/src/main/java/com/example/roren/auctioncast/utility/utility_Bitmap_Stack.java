@@ -1,45 +1,46 @@
 package com.example.roren.auctioncast.utility;
 
 import android.graphics.Bitmap;
+import java.util.ArrayList;
+
+/**
+ *  push, pop 메소드를 이용하여 Bitmap 을 ArrayList 에 넣고 뺄 수 있는 Stack 자료구조 클래스이다.
+ *
+ *  최대 20개의 bitmap 을 ArrayList 내에 저장할 수 있으며, push 메소드를 이용하여 ArrayList 가장 앞에
+ *  bitmap 을 삽입할 수 있고, pop 메소드를 이용하여 ArrayList 의 가장 앞에 있는 bitmap 을 꺼낼 수 있다.
+ */
 
 public class utility_Bitmap_Stack {
-    private int MAX_SIZE;
-    private Bitmap[] stack;
-    private int top;
+    private ArrayList<Bitmap> array;
 
     public utility_Bitmap_Stack() {
-        MAX_SIZE = 10;
-        stack = new Bitmap[MAX_SIZE];
-        top = -1;
+        array = new ArrayList<Bitmap>();
     }
 
-    private boolean isEmpty() {
-        return top == -1 ? true : false;
-    }
-    private boolean isFull() {
-        return (top + 1 == MAX_SIZE) ? true : false;
-    }
-
+    // ArrayList 의 가장 앞에 bitmap 을 삽입. ArrayList 의 size 를 체크하여 bitmap 의 갯수가 20개를 넘으면
+    // 맨 마지막의 bitmap 을 삭제한다.
     public void push(Bitmap data) {
-        if (!isFull())
-            stack[++top] = data;
+        array.add(0, data);
+        if(array.size() > 20){
+            array.remove(20);
+        }
+
     }
 
+    // ArrayList 의 가장 앞에 위치한 bitmap 을 반환하고, 해당 bitmap 을 삭제한다.
     public Bitmap pop() {
-        if (!isEmpty())
-            return stack[top--];
+        if(!array.isEmpty()){
+            Bitmap b = array.get(0);
+            array.remove(0);
+            return b;
+        }
         return null;
     }
 
+    // ArrayList 초기화
     public void clear(){
-        stack = new Bitmap[MAX_SIZE];
+        array.clear();
     }
 
-    public void display() {
-        System.out.print("top : " + top + "\nstack : ");
-        for (int idx = 0; idx <= top; idx++)
-            System.out.print(stack[idx] + " ");
-        System.out.println();
-    }
 
 }

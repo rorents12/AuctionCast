@@ -40,6 +40,11 @@ import com.example.roren.auctioncast.chatting.chatting_utility;
 import com.example.roren.auctioncast.utility.utility_global_variable;
 import com.example.roren.auctioncast.utility.utility_http_DBQuery;
 import com.github.faucamp.simplertmp.RtmpHandler;
+import com.google.android.gms.vision.CameraSource;
+import com.google.android.gms.vision.MultiProcessor;
+import com.google.android.gms.vision.Tracker;
+import com.google.android.gms.vision.face.Face;
+import com.google.android.gms.vision.face.FaceDetector;
 import com.seu.magicfilter.utils.MagicFilterType;
 
 import net.ossrs.yasea.SrsCameraView;
@@ -127,21 +132,6 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
     /**
      * 채팅을 위한 변수
      */
-//    private RecyclerView recyclerView_chatting;
-//    private recyclerView_adapter_chatting adapter_broadcasting_chatting;
-//    private ArrayList<recyclerView_item_chatting> items;
-//
-//    private Button btnSend;
-//    private EditText editText_chat;
-//
-//    private chatting_utility chattingUtility;
-//
-//    private Channel channel;
-//
-//    private Handler handler;
-//    private chatting_client_receiver receiver;
-//
-//    private String roomCode;
 
     // 채팅 UI를 위한 View 변수
     private EditText editText_chat;
@@ -168,38 +158,72 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
     /**
      * 경매 시스템을 위한 변수
      */
+    // 경매 시작 버튼
     private Button btnStartAuction;
+    // 입찰 버튼
     private Button btnBid;
+
+    // 호가를 1000원 올릴 수 있는 호가 조정 버튼
     private ImageButton btnBidUp;
+    // 호가를 1000원 내릴 수 있는 호가 조정 버튼
     private ImageButton btnBidDown;
+
+    // 현재 입찰가를 나타내는 텍스트뷰
     private TextView textView_priceNow;
+    // 현재 입찰자를 나타내는 텍스트뷰
     private TextView textView_bidder;
+    // 현재 사용자가 입찰할 호가를 나타내는 텍스트뷰
     private TextView textView_priceBid;
+
+    // 경매 UI 를 담고있는 linearLayout. 경매가 시작되면 Visibility 를 VISIBLE 로 변경하여 화면에 나타낸다
     private LinearLayout layout_auction;
 
+    // 현재 입찰가를 저장하는 변수. 사용자가 입찰 버튼을 눌렀을 때, 사용자가 결정한 호가가 현재 입찰가보다
+    // 작은지 큰지를 비교할 때 사용한다.
     private int priceNow;
 
     /**
      * 그림 그리기를 위한 변수
      */
+    // 그림을 그릴 수 있는 뷰 클래스. 그림을 그리기 위한 여러 메소드들이 정의되어 있다.
     private PaintingDrawView_Publish paintingDrawView;
+
+    // 그림 그리기 시작 버튼
     private Button btnPainting;
+
+    // 색상 변경 버튼. 버튼을 클릭하면 현재 사용하는 색깔로 버튼의 색상이 변경되며,
+    // 색상은 검정, 노랑, 빨강, 초록, 파랑 순으로 변경된다.
     private Button btnChangeColor;
+
+    // 지우개 버튼. 이 버튼을 터치하면 그리기 도구가 지우개로 변경된다.
     private Button btnEraser;
+
+    // 실행취소 버튼. 최근에 실행한 그림에 관한 행동들을 취소할 수 있다. 최근 20번의 행동까지 취소가 가능하다.
     private Button btnUndo;
+    // 모두 지우기 버튼. 그림을 초기화한다.
     private Button btnClear;
 
+    // 현재 사용자가 사용하고 있는 색상의 번호를 저장하는 변수. 색상을 변경할 때, 현재 사용하고 있는 색상이
+    // 무엇인지를 확인하기 위해 사용한다.
     private int colorNum;
 
+    // 서버와 UDP 통신을 하기 위한 UDP client 클래스
     private PaintingClient paintingClient;
     private ChannelFuture paintingChannelFuture;
 
+    // 서버로부터 온 UDP 패킷을 받아 처리하는 Receiver 클래스와 해당 패킷의 종류에 따라
+    // paintingDrawView_play 와 상호작용하는 handler 클래스
     private Handler paintingHandler;
     private PaintingReceiver paintingReceiver;
+
+    // UDP 통신을 위해 여러 parameter 를 받아 json 객체로 만들고, 해당 객체를 String 형태로
+    // UDP 서버로 보내주는 역할을 하는 클래스
     private Painting_sendMessageUtil painting_sendMessageUtil;
 
+    // UDP 서버의 주소 정보를 저장하는 클래스
     private InetSocketAddress UDP_server_address;
 
+    // PaintingDrawView_Play 뷰 클래스를 위치시킬 linearLayout.
     private LinearLayout linearLayout;
 
     @Override
@@ -212,10 +236,18 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
         /**
          * 그림 그리기를 위한 세팅
          */
-//        paintingDrawView = findViewById(R.id.paintingDrawView_publish);
-//        paintingDrawView.setVisibility(View.GONE);
+
+        // PaintingDrawView_Play 뷰 클래스를 위치시킬 linearLayout 을 선언한다.
         linearLayout = findViewById(R.id.activity_broadcasting_LinearLayout);
 
+        // painting_sendMessageUtil 클래스 초기화
+        painting_sendMessageUtil = new Painting_sendMessageUtil();
+
+        // UDP 서버의 주소 정보를 저장
+        UDP_server_address = new InetSocketAddress(utility_global_variable.HOST, utility_global_variable.PORT_UDP);
+
+        // UDP 서버로부터 온 정보를 처리하는 핸들러. receive_painting 메소드를 이용하여 메시지를 파싱하여
+        // 상황에 맞게 처리한다.
         paintingHandler = new Handler(){
             @Override
             public void handleMessage(Message msg) {
@@ -229,17 +261,19 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
                 }
             }
         };
+
+        // UDP 서버로부터 온 패킷을 처리하는 리시버
         paintingReceiver = new PaintingReceiver(paintingHandler);
-        painting_sendMessageUtil = new Painting_sendMessageUtil();
 
-        UDP_server_address = new InetSocketAddress(utility_global_variable.HOST, utility_global_variable.PORT_UDP);
-
+        // 그림그리기 UI 의 버튼들을 초기화
         btnPainting = findViewById(R.id.activity_broadcasting_button_painting);
         btnChangeColor = findViewById(R.id.activity_broadcasting_button_colorChange);
         btnEraser = findViewById(R.id.activity_broadcasting_button_eraser);
         btnUndo = findViewById(R.id.activity_broadcasting_button_undo);
         btnClear = findViewById(R.id.activity_broadcasting_button_clear);
 
+        // 그림 그리기 UI 의 버튼들의 Visibility 를 GONE 으로 변경한다.
+        // 그림 그리기 버튼을 누르면 해당 UI 들의 Visibility 를 VISIBLE 로 변경한다.
         btnPainting.setVisibility(View.GONE);
         btnEraser.setVisibility(View.GONE);
         btnChangeColor.setVisibility(View.GONE);
@@ -247,9 +281,13 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
         btnUndo.setVisibility(View.GONE);
         btnClear.setVisibility(View.GONE);
 
+        // 사용 색상의 초기값을 BLACK 으로 설정.
         colorNum = Color.BLACK;
 
-        // 그림그리기 버튼을 클릭하면 TCP 소켓을 이용해 채팅방에 있는 인원에게 그림그리기 시작 알림을 보낸다.
+        // 그림 그리기 버튼에 OnClickListener 를 세팅한다.
+        // 그림그리기 버튼을 클릭하면 TCP 소켓을 이용해 채팅방에 있는 인원에게 그림그리기 시작 알림을 보내고,
+        // 버튼의 text 를 "중단" 으로 변경한다.
+        // 만약 버튼의 text 가 "중단" 일 때 버튼을 클릭하면 TCP 소켓을 이용해 채팅방의 인원들에게 그림그리기 중단 알림을 보낸다.
         btnPainting.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -284,6 +322,8 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
             }
         });
 
+        // 지우개 버튼의 OnClickListener.
+        // paintingDrawView 의 색상변경 메소드를 이용하여 색상을 TRANSPARENT 로 변경.
         btnEraser.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -291,6 +331,9 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
             }
         });
 
+        // 색상 변경 버튼의 OnClickListener.
+        // 버튼을 클릭할 때마다 현재 색상의 다음 색상으로 변경한다.
+        // 순서는 검정 - 노랑 - 빨강 - 초록 - 파랑 순이다.
         btnChangeColor.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -334,12 +377,16 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
             }
         });
 
+        // 실행취소 버튼을 누르면 paintingDrawView 의 실행취소 메소드를 실행하고,
+        // UDP 통신을 통해 실행취소 기능이 실행되었다는 메시지를 보낸다.
         btnUndo.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                // 실행취소 메소드 실행
                 paintingDrawView.undo();
                 paintingDrawView.invalidate();
                 try{
+                    // UDP 메시지 전송
                     painting_sendMessageUtil.sendMessage(
                             utility_global_variable.CODE_PAINT_UNDO, UDP_server_address, paintingClient, roomCode
                     );
@@ -349,12 +396,16 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
             }
         });
 
+        // 모두지우기 버튼을 누르면 paintingDrawView 의 모두지우기 메소드를 실행하고,
+        // UDP 통신을 통해 모두지우기 기능이 실행되었다는 메시지를 보낸다.
         btnClear.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                // 모두지우기 메소드 실행
                 paintingDrawView.clear();
                 paintingDrawView.invalidate();
                 try{
+                    // UDP 메시지 전송
                     painting_sendMessageUtil.sendMessage(
                             utility_global_variable.CODE_PAINT_CLEAR, UDP_server_address, paintingClient, roomCode
                     );
@@ -1042,18 +1093,28 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
 
                 try{
                     paintingChannelFuture = paintingClient.start();
+
+                    // UDP 서버에 그림그리기가 시작됨을 알림
                     painting_sendMessageUtil.sendMessage(utility_global_variable.CODE_PAINT_START, UDP_server_address, paintingClient, roomCode);
                 }catch (Exception e){
                     e.printStackTrace();
                 }
 
-                // 그림판 등장
+                // 그림판 UI 들의 Visibility 를 VISIBLE 로 변경
                 if(linearLayout.getVisibility() == View.VISIBLE){
+
+                    // 방송 도중 최초로 그림 그리기를 시작하면, linearLayout 의 Visibility 가 VISIBLE 상태이므로,
+                    // 아래의 코드는 방송 도중 최초로 그림그리기를 시작했을 때 실행된다.
+                    // paintingDrawView_Play 클래스를 생성하고, linearLayout 에 addView 를 통해 삽입한다.
                     paintingDrawView = new PaintingDrawView_Publish(this, paintingClient, UDP_server_address, roomCode);
                     linearLayout.addView(paintingDrawView);
                 }else{
+
+                    // 그림 그리기를 중단했다가 다시 활성화 했을 경우, linearLayout 의 Visibility 값만 VISIBLE 로 변경해준다.
                     linearLayout.setVisibility(View.VISIBLE);
                 }
+
+                // 그림 그리기 UI 들의 Visibility 를 VISIBLE 로 변경
                 btnChangeColor.setVisibility(View.VISIBLE);
                 btnEraser.setVisibility(View.VISIBLE);
                 btnUndo.setVisibility(View.VISIBLE);
@@ -1061,9 +1122,9 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
                 break;
 
             case utility_global_variable.CODE_CHAT_STOP_PAINTING:
-                // 그림그리지 중단 신호가 왔을 때
 
-                // 그림판 안보이도록 처리
+                // 그림그리기 중단 신호가 왔을 때
+                // 그림 그리기 UI 의 Visibility 를 GONE 으로 처리한다.
                 linearLayout.setVisibility(View.GONE);
                 btnChangeColor.setVisibility(View.GONE);
                 btnEraser.setVisibility(View.GONE);
@@ -1074,7 +1135,12 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
         }
     }
 
+    /**
+     * UDP 서버로부터 온 json 메시지를 파싱하여 상황에 맞게 처리하는 메소드
+     */
     public void receive_painting(String string) {
+
+        // 이 액티비티에서는 UDP 패킷을 보내기만 하고, 받을 일은 없기 때문에 이 메소드가 딱히 하는일은 없다.
 
         try {
             JSONObject json = new JSONObject(string);
@@ -1098,4 +1164,5 @@ public class activity_publishVideo extends AppCompatActivity implements RtmpHand
             e.printStackTrace();
         }
     }
+
 }
