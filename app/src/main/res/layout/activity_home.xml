@@ -176,6 +176,14 @@
                 android:text="보물찾기"
                 android:background="#eeed"/>
 
+            <Button
+                android:id="@+id/activity_broadcasting_list_button_advertisement"
+                android:layout_marginTop="5dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="AR 광고시청"
+                android:background="#eeed"/>
+
 
 
 

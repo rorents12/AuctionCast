@@ -61,6 +61,8 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
     Button button_contractInfo;
     // 보물찾기 버튼
     Button button_treasureHunt;
+    // AR 광고시청 버튼
+    Button button_advertisement;
 
     // 사용자 id 를 표시하기 위한 textView
     TextView textView_id;
@@ -102,12 +104,14 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
         button_auction_coin = findViewById(R.id.activity_broadcasting_list_button_chargeCoin);
         button_contractInfo = findViewById(R.id.activity_broadcasting_list_button_contract_information);
         button_treasureHunt = findViewById(R.id.activity_broadcasting_list_button_treasureHunt);
+        button_advertisement = findViewById(R.id.activity_broadcasting_list_button_advertisement);
 
         button_start_broadcast.setOnClickListener(this);
         button_charge_cash.setOnClickListener(this);
         button_auction_coin.setOnClickListener(this);
         button_contractInfo.setOnClickListener(this);
         button_treasureHunt.setOnClickListener(this);
+        button_advertisement.setOnClickListener(this);
 
         textView_id = findViewById(R.id.activity_broadcasting_list_textView_id);
         textView_cash = findViewById(R.id.activity_broadcasting_list_textView_cash);
@@ -251,6 +255,16 @@ public class activity_home extends AppCompatActivity implements View.OnClickList
                 Intent intent4 = new Intent(context, activity_faceDetection.class);
 
                 startActivity(intent4);
+                break;
+
+            /**
+             * AR 광고시청 버튼
+             */
+            case R.id.activity_broadcasting_list_button_advertisement:
+                // AR 광고시청 activity 로 이동
+                Intent intent5 = new Intent(this, activity_AR_advertisement.class);
+
+                startActivity(intent5);
                 break;
         }
     }
