@@ -1,1 +1,1 @@
-include ':app', ':rtmpPublisher', ':AR-advertisement'
+include ':app', ':rtmpPublisher', ':AR-AD'
